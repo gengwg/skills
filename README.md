@@ -1,5 +1,7 @@
 # skills
 
+[![skills.sh](https://skills.sh/b/gengwg/skills)](https://skills.sh/gengwg/skills)
+
 Agent skills. Install with the [skills CLI](https://www.skills.sh/):
 
 ```bash
