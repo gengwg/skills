@@ -13,3 +13,4 @@ npx skills add gengwg/skills -s medium-post -g
 | Skill | Use for |
 |---|---|
 | [medium-post](medium-post/SKILL.md) | Publishing markdown to Medium via browser automation (no API needed) |
+| [wifi-powersave-fix](wifi-powersave-fix/SKILL.md) | Fix laggy WiFi on Linux by disabling NetworkManager power saving |
