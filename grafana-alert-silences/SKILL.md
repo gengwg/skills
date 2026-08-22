@@ -1,0 +1,89 @@
+---
+name: grafana-alert-silences
+description: Use when silencing Grafana alerts for a maintenance window, when a silence doesn't match the alerts it should, when deciding between a silence and a mute timing, or when silencing one node/instance must not blind cluster-wide alerts
+---
+
+# Grafana Alert Silences
+
+## Overview
+
+Silences suppress notifications for alerts matching a set of label matchers, for a bounded time. Two things go wrong in practice: the silence doesn't match (missing the rule-UID matcher), or it matches too much (blinding aggregate alerts during a window when you most need them).
+
+## Silence vs mute timing
+
+- **Silence**: one-off, time-boxed (a maintenance window, a vendor intervention, a known-bad node awaiting hardware). Expires on its own.
+- **Mute timing**: recurring schedule attached to a notification policy (every Sunday 02:00–04:00). Not for one-off windows.
+
+Picking a mute timing for a one-off means someone must remember to remove it. Use silences for anything with an end date.
+
+## Creating a silence that actually matches
+
+Grafana-managed alerts carry the rule UID as a label. To silence one specific rule, match on it:
+
+```
+__alert_rule_uid__ = <rule UID>
+```
+
+Matching only on `alertname` can fail for Grafana-managed rules (folders can contain same-named rules; notification-time labels may differ from what you expect). The UID matcher is exact. Get the UID from the rule's URL or `/api/v1/provisioning/alert-rules`. (`__alert_rule_uid__` exists only on Grafana-managed rules — for data-source-managed Mimir/Loki rules, match on the rule's own labels.)
+
+When a silence isn't matching, look at the firing alert's actual notification-time labels rather than guessing:
+
+```sh
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/alerts" | jq '.[].labels'
+```
+
+## Scope tightly — keep aggregates armed
+
+Silencing for one node's maintenance:
+
+```
+__alert_rule_uid__ = <per-node rule UID>
+node               = <the node>
+```
+
+(The label holding the node name varies per deployment — `node`, `instance`, `hostname` — check the firing alert's labels, above.)
+
+Do NOT silence on broad labels (`cluster=X`, or alertname alone) — that also suppresses the cluster-aggregate rules ("N nodes down") which are exactly the ones that must stay armed while you work. One silence per (rule, node) pair beats one broad silence.
+
+## Hygiene per silence
+
+- **Explicit UTC start and end** — never open-ended. Size the window to the work plus margin; extend later if needed.
+- **Comment with a ticket/issue reference** and what the window is for — the comment is the only context the next on-call sees.
+- **Record the silence UID** (returned on create) in the ticket so it can be extended or lifted early:
+
+```sh
+# Create (Alertmanager API, works for Grafana-managed alerts)
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/silences" -d '{
+    "matchers": [
+      {"name": "__alert_rule_uid__", "value": "<uid>", "isRegex": false, "isEqual": true},
+      {"name": "node", "value": "<node>", "isRegex": false, "isEqual": true}
+    ],
+    "startsAt": "2026-01-01T02:00:00Z",
+    "endsAt":   "2026-01-01T06:00:00Z",
+    "comment":  "ticket ABC-123: NIC swap on <node>",
+    "createdBy": "<your-name>"
+  }'
+# → {"silenceID": "..."}   record this
+
+# Lift early (DELETE expires the silence — it stays visible as "expired")
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/silence/$SILENCE_ID"
+
+# Lost the UID? List active silences:
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/silences" | jq '.[] | select(.status.state=="active") | {id, comment}'
+```
+
+## After the window
+
+Verify the silence expired or delete it, then check the silenced alerts' current state — a silence hides state changes; the alert may have been firing the whole time for an unrelated reason.
+
+## Common mistakes
+
+- Matching on `alertname` only and wondering why the alert still pages — add `__alert_rule_uid__`.
+- One broad cluster-wide silence for a one-node job — aggregate alerts go blind.
+- Open-ended or local-time windows — always explicit UTC start/end.
+- No comment/ticket — the next on-call can't tell if it's safe to lift.
+- Losing the silence UID — now lifting early means hunting through the UI.
