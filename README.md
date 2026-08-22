@@ -19,3 +19,5 @@ npx skills add gengwg/skills -s medium-post -g
 | [grafana-alert-rule-api](grafana-alert-rule-api/SKILL.md) | Silent-failure traps in Grafana's alert-rule provisioning API |
 | [grafana-alert-silences](grafana-alert-silences/SKILL.md) | Time-boxed alert silences that match correctly and don't blind aggregates |
 | [mirror-repo-data-to-notion](mirror-repo-data-to-notion/SKILL.md) | Mirror git-managed data into Notion with detectable drift |
+| [verify-alert-before-replying](verify-alert-before-replying/SKILL.md) | Re-derive an alert's claim from live data before answering "is this real?" |
+| [kubespray-node-rejoin](kubespray-node-rejoin/SKILL.md) | Rejoin a node to a kubespray cluster: scoped runs, recap reading, post-verification |

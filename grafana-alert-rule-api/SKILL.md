@@ -56,6 +56,14 @@ A 200 is not confirmation. GET the rule back and diff the fields you care about 
 
 When alert rules are provisioned from files in a repo, a change is **two writes**: the repo file (reviewable, survives re-provisioning) *and* the live API (takes effect now). Doing only one means either no effect today or your change reverted on the next sync. Update both, in whichever order your team reviews, and say so in the MR.
 
+## Beyond the API write
+
+A rule change isn't done when the PUT succeeds:
+
+- **Runbook**: update the rule's runbook/description doc in the same change — a threshold nobody can explain six months later gets deleted or ignored.
+- **Routing**: confirm the rule's labels still match the intended notification policy (a renamed severity/team label silently reroutes to the default receiver).
+- **Severity sanity check**: "would I want on-call woken at 2am for this?" A single-entity fault (one node, one pod) is usually `warning`; only cluster-aggregate conditions ("N nodes down", "egress down") earn `critical`.
+
 ## Quick reference
 
 ```sh
