@@ -14,3 +14,5 @@ npx skills add gengwg/skills -s medium-post -g
 |---|---|
 | [medium-post](medium-post/SKILL.md) | Publishing markdown to Medium via browser automation (no API needed) |
 | [wifi-powersave-fix](wifi-powersave-fix/SKILL.md) | Fix laggy WiFi on Linux by disabling NetworkManager power saving |
+| [dotfiles-multi-machine-sync](dotfiles-multi-machine-sync/SKILL.md) | Dotfiles repo with an idempotent symlink installer, synced across machines |
+| [pygame-headless-test-and-release](pygame-headless-test-and-release/SKILL.md) | Test, screenshot, and release pygame apps without a display |
