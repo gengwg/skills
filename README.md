@@ -1,9 +1,13 @@
 # skills
 
-Personal agent skills. Install with the [skills CLI](https://www.skills.sh/):
+Agent skills. Install with the [skills CLI](https://www.skills.sh/):
 
 ```bash
-npx skills add gengwg/skills -s <name>
+npx skills add gengwg/skills -s <name>       # project install
+npx skills add gengwg/skills -s <name> -g    # global install
+
+# example
+npx skills add gengwg/skills -s medium-post -g
 ```
 
 | Skill | Use for |
