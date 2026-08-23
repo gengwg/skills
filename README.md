@@ -23,3 +23,6 @@ npx skills add gengwg/skills -s medium-post -g
 | [mirror-repo-data-to-notion](mirror-repo-data-to-notion/SKILL.md) | Mirror git-managed data into Notion with detectable drift |
 | [verify-alert-before-replying](verify-alert-before-replying/SKILL.md) | Re-derive an alert's claim from live data before answering "is this real?" |
 | [kubespray-node-rejoin](kubespray-node-rejoin/SKILL.md) | Rejoin a node to a kubespray cluster: scoped runs, recap reading, post-verification |
+| [grafana-oncall-shift-override](grafana-oncall-shift-override/SKILL.md) | Take over a shift or fix a rotation in Grafana OnCall without corrupting the schedule |
+| [grafana-alert-noise-reduction](grafana-alert-noise-reduction/SKILL.md) | Cut alert spam by mechanism: grouping, query guards, quorum — without blinding the rule |
+| [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) |

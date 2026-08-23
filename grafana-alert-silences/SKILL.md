@@ -76,6 +76,16 @@ curl -s -H "Authorization: Bearer $TOKEN" \
   "$GRAFANA/api/alertmanager/grafana/api/v2/silences" | jq '.[] | select(.status.state=="active") | {id, comment}'
 ```
 
+**Extending or editing mints a new silence ID.** Changing a silence's window or matchers doesn't mutate it — a new silence (new ID) is created and the old one is dead. Expire the old one explicitly and record the new ID wherever you recorded the first, or "lift early" later hits a ghost.
+
+## Maintenance batches: verify the work started first
+
+Silencing a batch of nodes for a rolling maintenance (firmware, reboots): before creating the silence, confirm on-cluster that those exact nodes are actually staged — cordoned, tainted, or drained. Silencing on someone's "starting batch N now" message alone can blind the wrong node set, or the right set hours before anything happens.
+
+- One silence per batch with a regex matcher over the node names beats N single-node silences — one ID to extend or expire.
+- End the window at a fixed boundary (e.g. midnight local) with margin over the expected duration. If the work runs long, extend *before* it lapses — remember extending mints a new ID.
+- When the next batch starts, verify the previous batch's nodes came back (Ready, expected GPU/device count, taint removed) — the expiring silence was hiding exactly those alerts.
+
 ## After the window
 
 Verify the silence expired or delete it, then check the silenced alerts' current state — a silence hides state changes; the alert may have been firing the whole time for an unrelated reason.
