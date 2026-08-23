@@ -32,7 +32,7 @@ Audio matters too — `SDL_AUDIODRIVER=dummy` prevents ALSA/Pulse errors on mach
 - **Headless**: the dummy video driver still renders — you still call `pygame.display.set_mode(...)` to get a surface, then `pygame.image.save(screen, "shot.png")` works with no display at all. Drive the game loop a few frames first, and give the app a trigger (a `--screenshot PATH` flag or test fixture) so CI can invoke it.
 - **Real display on Wayland/X11**: no single screenshot tool is universal. Probe in order and use the first present:
   ```sh
-  shot=$(for t in grim scrot maim import; do command -v $t && break; done)
+  for t in grim scrot maim import; do command -v "$t" && break; done
   ```
   (`grim` = Wayland, `scrot`/`maim` = X11, `import` = ImageMagick fallback.)
 

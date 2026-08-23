@@ -35,7 +35,7 @@ Medium has no usable API (integration tokens discontinued) and hard-blocks CDP-d
 3. **Verify the title survived**: screenshot and check the Title line isn't empty — the paste can silently eat it. If empty, click the title line and retype.
 4. Click Publish (top right) → dialog opens. In the dialog:
    - Uncheck "Paywall this story" if free post wanted (defaults checked). Zoom to verify the checkbox actually toggled — clicks miss.
-   - Topics: type a word, WAIT for the suggestion dropdown, CLICK a suggestion. Commas and Enter as key events do NOT tokenize (comma types the word "comma"). Only dropdown clicks work. Skip topics if dropdown misbehaves — they can be added post-publish via story ⋯ menu → Change topics.
+   - Topics: type a word, WAIT for the suggestion dropdown, CLICK a suggestion. Commas and Enter as key events do NOT tokenize (comma types a literal comma character). Only dropdown clicks work. Skip topics if dropdown misbehaves — they can be added post-publish via story ⋯ menu → Change topics.
 5. Click Publish. Confirm via tab URL flipping to `<user>.medium.com/<slug>` (screenshot may fail there — subdomain lacks extension permission; that's success, not an error).
 
 ## Post-publish edits
