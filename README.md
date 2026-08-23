@@ -26,3 +26,4 @@ npx skills add gengwg/skills -s medium-post -g
 | [grafana-oncall-shift-override](grafana-oncall-shift-override/SKILL.md) | Take over a shift or fix a rotation in Grafana OnCall without corrupting the schedule |
 | [grafana-alert-noise-reduction](grafana-alert-noise-reduction/SKILL.md) | Cut alert spam by mechanism: grouping, query guards, quorum — without blinding the rule |
 | [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) |
+| [venv-to-uv-migration](venv-to-uv-migration/SKILL.md) | Move a Python-tooling repo from venv+pip to uv — persistent .venv vs stateless `uv run` |
