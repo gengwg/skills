@@ -24,7 +24,8 @@ Medium has no usable API (integration tokens discontinued) and hard-blocks CDP-d
 ## Publish flow
 
 1. New tab → `https://medium.com/new-story`, wait 4s.
-2. Click title area, type the title. Body markdown typed as text does NOT convert — inject via synthetic paste with javascript_tool:
+2. Click the title line, type the title, then press **Enter** to move into the body. Pasting while focus is still on the title merges the whole article into the title line.
+3. Body markdown typed as text does NOT convert — inject via synthetic paste with javascript_tool:
    ```js
    const dt = new DataTransfer();
    dt.setData('text/html', html);
@@ -32,20 +33,29 @@ Medium has no usable API (integration tokens discontinued) and hard-blocks CDP-d
    document.activeElement.dispatchEvent(new ClipboardEvent('paste',
      {clipboardData: dt, bubbles: true, cancelable: true}));
    ```
-3. **Verify the title survived**: screenshot and check the Title line isn't empty — the paste can silently eat it. If empty, click the title line and retype.
-4. Click Publish (top right) → dialog opens. In the dialog:
-   - Uncheck "Paywall this story" if free post wanted (defaults checked). Zoom to verify the checkbox actually toggled — clicks miss.
-   - Topics: type a word, WAIT for the suggestion dropdown, CLICK a suggestion. Commas and Enter as key events do NOT tokenize (comma types a literal comma character). Only dropdown clicks work. Skip topics if dropdown misbehaves — they can be added post-publish via story ⋯ menu → Change topics.
-5. Click Publish. Confirm via tab URL flipping to `<user>.medium.com/<slug>` (screenshot may fail there — subdomain lacks extension permission; that's success, not an error).
+4. **Verify the title survived**: `ctrl+Home`, screenshot, check the Title line holds only the title. If the paste ate or merged it, `ctrl+a` + Delete and redo from step 2.
+5. Click Publish (top right). **The first click after page load often doesn't register** — if no dialog, click once more (don't double-click; that opens then closes it). In the dialog set "Paywall this story" (defaults checked) and zoom to verify the toggle took — clicks on it miss often. **Skip topics here** — see below.
+6. Click Publish. Confirm via tab URL flipping to `<user>.medium.com/<slug>` (screenshot may fail there — subdomain lacks extension permission; that's success, not an error).
+
+## Topics — always add them after publishing
+
+The topic field **in the publish dialog is broken for automation**: suggestions appear, but clicking one (by coordinate or element ref) leaves the field empty and no chip is created. Commas and Enter don't tokenize either (a comma types the word "comma"). Don't fight it — publish without topics.
+
+The post-publish editor's own topic UI works reliably. Go to `medium.com/p/<id>/edit` → ⋯ menu → **Change topics**, then per topic: click "Add a topic…", type, wait for the dropdown, click the suggestion — a chip appears immediately. Repeat up to 5, then click **Save**. (This popover has a Save button; the publish dialog's field does not.)
+
+Match the suggestion that actually exists rather than the label you had in mind — e.g. there is no "AI Agents" topic, and "Note Taking" resolves to `Notetaking`.
 
 ## Post-publish edits
 
-Edit URL: `medium.com/p/<id>/edit` (stays on medium.com, permissions OK). The ⋯ menu there has: Manage paywall setting, Change topics.
+Edit URL: `medium.com/p/<id>/edit` (stays on medium.com, permissions OK). The ⋯ menu there has: Manage paywall setting, Change topics, Change display title/subtitle, Manage unlisted setting.
 
 ## Known limits
 
 | Symptom | Meaning |
 |---|---|
-| "maximum of two stories in the past 24 hours" | Account rate limit. Draft is saved; publish later. |
+| "maximum of two stories in the past 24 hours" | Account rate limit, rolling window. Draft is saved; publish later. |
+| Same error when using "Schedule for later" | Scheduling counts against the quota **when you schedule**, not on the target date. It is not a way around the cap — wait for the oldest publish to age out. |
 | Screenshot "Permission denied for this action on this domain" | Extension lacks per-site permission (e.g. user subdomain). Not fatal. |
-| Tag field shows "Tags only support letters..." | You typed commas as text. Use suggestion clicks. |
+| Tag field shows "Tags only support letters..." | You typed commas as text. Add topics post-publish instead. |
+
+The 2/24h limit is server-side anti-spam with no bypass. Reports suggest it's tiered (members and older accounts get more headroom) and that Medium changes the numbers, but there's no setting to raise it.
