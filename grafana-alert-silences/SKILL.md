@@ -74,16 +74,35 @@ curl -s -X DELETE -H "Authorization: Bearer $TOKEN" \
 # Lost the UID? List active silences:
 curl -s -H "Authorization: Bearer $TOKEN" \
   "$GRAFANA/api/alertmanager/grafana/api/v2/silences" | jq '.[] | select(.status.state=="active") | {id, comment}'
+
+# VERIFY (do this after every create or edit — both halves):
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/silences" \
+  | jq '.[] | select(.id=="<id>") | {state: .status.state, startsAt, endsAt}'   # want state=active
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/alerts?active=true&silenced=true" \
+  | jq '.[] | select(<your target>) | {state: .status.state, by: .status.silencedBy}'  # want suppressed
+# And confirm the blast radius — everything that must stay armed still is:
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$GRAFANA/api/alertmanager/grafana/api/v2/alerts?active=true&silenced=false" \
+  | jq '[.[] | select(.labels.__alert_rule_uid__=="<uid>") | .labels.node]'
 ```
 
-**Extending or editing mints a new silence ID.** Changing a silence's window or matchers doesn't mutate it — a new silence (new ID) is created and the old one is dead. Expire the old one explicitly and record the new ID wherever you recorded the first, or "lift early" later hits a ghost.
+**`startsAt` in the future creates a silence that suppresses nothing.** It sits in `state: pending` and the alert stays `active` — with no error to tell you. Unless you deliberately want a scheduled window, set `startsAt` to now or earlier. A window you believed was covering you but was still pending is exactly when the pages you were preventing arrive.
+
+**Editing may or may not reuse the silence ID — never assume.** Changing only `endsAt` on an *active* silence has been seen to keep the same ID; changing `startsAt`, or editing a silence that is still *pending*, expires the old one and mints a new ID. The expiry is silent, so the old ID looks like a failed edit when the edit in fact succeeded under a new ID.
+
+Two consequences:
+
+- **Never "repair" a silence you think failed by creating another one.** List the silences first — you may already have minted one, and you will end up with two overlapping silences on the same target, which is confusing to the next responder and easy to half-lift later.
+- **Re-read the list after every create *and* edit**, and confirm both halves: the silence is `state: active`, **and** the target alert is `status.state: suppressed` carrying that silence's ID in `silencedBy`. A silence that exists is not a silence that matches.
 
 ## Maintenance batches: verify the work started first
 
 Silencing a batch of nodes for a rolling maintenance (firmware, reboots): before creating the silence, confirm on-cluster that those exact nodes are actually staged — cordoned, tainted, or drained. Silencing on someone's "starting batch N now" message alone can blind the wrong node set, or the right set hours before anything happens.
 
 - One silence per batch with a regex matcher over the node names beats N single-node silences — one ID to extend or expire.
-- End the window at a fixed boundary (e.g. midnight local) with margin over the expected duration. If the work runs long, extend *before* it lapses — remember extending mints a new ID.
+- End the window at a fixed boundary (e.g. midnight local) with margin over the expected duration. If the work runs long, extend *before* it lapses, and re-read the list afterwards in case the edit minted a new ID.
 - When the next batch starts, verify the previous batch's nodes came back (Ready, expected GPU/device count, taint removed) — the expiring silence was hiding exactly those alerts.
 
 ## After the window
@@ -93,6 +112,10 @@ Verify the silence expired or delete it, then check the silenced alerts' current
 ## Common mistakes
 
 - Matching on `alertname` only and wondering why the alert still pages — add `__alert_rule_uid__`.
+- A `startsAt` a few minutes in the future — the silence is `pending`, suppresses nothing, and reports no error.
+- Assuming the returned `silenceID` is still the live one after an edit — re-read the list.
+- Creating a replacement for a silence you believed the edit killed — check for the minted one first, or you get overlapping duplicates.
+- Declaring done because the silence exists — verify the target alert actually reads `suppressed`, and that the alerts which must stay armed still do.
 - One broad cluster-wide silence for a one-node job — aggregate alerts go blind.
 - Open-ended or local-time windows — always explicit UTC start/end.
 - No comment/ticket — the next on-call can't tell if it's safe to lift.
