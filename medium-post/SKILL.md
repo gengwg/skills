@@ -33,6 +33,19 @@ Medium has no usable API (integration tokens discontinued) and hard-blocks CDP-d
    document.activeElement.dispatchEvent(new ClipboardEvent('paste',
      {clipboardData: dt, bubbles: true, cancelable: true}));
    ```
+   **The OS clipboard is not a shortcut here.** Loading the HTML with
+   `xclip -t text/html` and sending `ctrl+v` does nothing: CDP-dispatched key
+   events don't invoke Chrome's paste command. Synthetic `ClipboardEvent` is the
+   only way in. Click into the body first and confirm
+   `document.activeElement.className` contains `postArticle-content` — the
+   dispatch silently no-ops against the wrong element.
+
+   For anything over ~2KB, don't hand-transcribe the HTML into the JS string.
+   Have a script emit pre-escaped `window.__h = "..."` / `window.__h += "..."`
+   chunks, paste each verbatim, then dispatch using `window.__h`. Each call
+   returns the running length, so compare the total against the source before
+   dispatching. Note the source's *character* count, not `wc -c` — em dashes and
+   other non-ASCII make bytes exceed characters.
 4. **Verify the title survived**: `ctrl+Home`, screenshot, check the Title line holds only the title. If the paste ate or merged it, `ctrl+a` + Delete and redo from step 2.
 5. Click Publish (top right). **The first click after page load often doesn't register** — if no dialog, click once more (don't double-click; that opens then closes it). In the dialog set "Paywall this story" (defaults checked) and zoom to verify the toggle took — clicks on it miss often. **Skip topics here** — see below.
 6. Click Publish. Confirm via tab URL flipping to `<user>.medium.com/<slug>` (screenshot may fail there — subdomain lacks extension permission; that's success, not an error).
@@ -56,6 +69,7 @@ Edit URL: `medium.com/p/<id>/edit` (stays on medium.com, permissions OK). The �
 | "maximum of two stories in the past 24 hours" | Account rate limit, rolling window. Draft is saved; publish later. |
 | Same error when using "Schedule for later" | Scheduling counts against the quota **when you schedule**, not on the target date. It is not a way around the cap — wait for the oldest publish to age out. |
 | Screenshot "Permission denied for this action on this domain" | Extension lacks per-site permission (e.g. user subdomain). Not fatal. |
+| Screenshot "CDP sendCommand Page.captureScreenshot timed out" | Renderer is stalled, usually right after the editor loads. **Input sent during the stall is lost** — a title typed then is silently gone. Wait 3s, re-screenshot, and redo the step rather than assuming it landed. |
 | Tag field shows "Tags only support letters..." | You typed commas as text. Add topics post-publish instead. |
 
 The 2/24h limit is server-side anti-spam with no bypass. Reports suggest it's tiered (members and older accounts get more headroom) and that Medium changes the numbers, but there's no setting to raise it.
