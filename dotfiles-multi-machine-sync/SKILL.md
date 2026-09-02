@@ -64,4 +64,5 @@ Never commit secrets. Ship `*.example` templates (`secrets.zsh.example`, `zshrc.
 
 - Running the installer on machine 2 before the opt-in rule exists — it clobbers machine-local ssh config.
 - Symlinking a file the consuming tool must own as a real file (syncthing `.stignore`).
+- **Replacing a real directory with a symlink *inside* a Syncthing-replicated folder.** Syncthing does not track symlinks, so the swap reads as a deletion and propagates — the other machine loses the content. Tempting when a subtree is also a git clone and you want one copy instead of two; don't. Check `syncthing/config.xml` for the folder paths first, and confirm with `curl -H "X-API-Key: $KEY" 'localhost:8384/rest/db/status?folder=<id>'` — a non-zero `globalDeleted` right after the change is the tell. Recovery is to restore the real directories; sync re-adds them.
 - Editing `~/.zshrc` directly on one machine "just for now" — it's a symlink; the change is already in the repo working tree. Commit or revert, don't fork.
