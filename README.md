@@ -40,3 +40,7 @@ first, and a session-start line shows the current kube context and branch.
 /plugin marketplace add gengwg/skills
 /plugin install oncall-sre@gengwg
 ```
+
+Private rules go in `~/.claude/hooks/guard_local.py`, which the guard loads if
+present. It may define `tool(name, inp)`, `command(cmd, raw)` and
+`statement(stmt, d)`, each returning `("deny" | "ask", reason)` or `None`.
