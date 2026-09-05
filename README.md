@@ -41,6 +41,9 @@ first, and a session-start line shows the current kube context and branch.
 /plugin install oncall-sre@gengwg
 ```
 
+Both commands are needed on every machine; an `extraKnownMarketplaces` entry in
+`settings.json` alone does not fetch the marketplace.
+
 Private rules go in `~/.claude/hooks/guard_local.py`, which the guard loads if
 present. It may define `tool(name, inp)`, `command(cmd, raw)` and
 `statement(stmt, d)`, each returning `("deny" | "ask", reason)` or `None`.
