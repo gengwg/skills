@@ -85,6 +85,7 @@ def kubectl_guard(cmd):
 
 
 def bash(cmd, cwd):
+    cmd = strip_heredocs(cmd)  # heredoc bodies are data, not commands
     d = repo_dir(cmd, cwd)
     if "kubectl" in cmd:
         kubectl_guard(cmd)
