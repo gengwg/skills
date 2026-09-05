@@ -147,11 +147,36 @@ def rm_guard(stmt, d):
                 out("ask", f"rm -rf outside scratchpad/worktrees: {p}")
 
 
+LOCAL_RULES = os.path.expanduser("~/.claude/hooks/guard_local.py")
+_local = None
+
+
+def local(hook, *args):
+    """Private rules from ~/.claude/hooks/guard_local.py, if present. It may define
+    tool(name, inp), command(cmd, raw) and statement(stmt, d), each returning
+    (decision, reason) or None. It may `import guard` for git(), SEG, GIT."""
+    global _local
+    if _local is None:
+        _local = False
+        if os.path.isfile(LOCAL_RULES):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("guard_local", LOCAL_RULES)
+            _local = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(_local)
+    fn = getattr(_local, hook, None) if _local else None
+    r = fn(*args) if fn else None
+    if r:
+        out(*r)
+
+
 def bash(cmd, cwd):
+    raw = cmd
     cmd = strip_heredocs(cmd)  # heredoc bodies are data, not commands
+    local("command", cmd, raw)
     if "kubectl" in cmd:
         kubectl_guard(cmd)
     for stmt, d in statements(cmd, cwd):
+        local("statement", stmt, d)
         git_guard(stmt, d)
         rm_guard(stmt, d)
 
@@ -168,8 +193,10 @@ def main():
         h = json.load(sys.stdin)
     except Exception:
         return
-    if h.get("tool_name") == "Bash":
-        bash((h.get("tool_input") or {}).get("command", ""), h.get("cwd") or os.getcwd())
+    tool, inp = h.get("tool_name", ""), h.get("tool_input") or {}
+    local("tool", tool, inp)
+    if tool == "Bash":
+        bash(inp.get("command", ""), h.get("cwd") or os.getcwd())
 
 
 if __name__ == "__main__":

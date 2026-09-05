@@ -7,7 +7,7 @@
       "name": "oncall-sre",
       "source": "./",
       "description": "On-call SRE skills (Grafana alerting/OnCall, GPU nodes, kubespray) plus kubectl/git guardrail hooks.",
-      "version": "1.1.2"
+      "version": "1.2.0"
     }
   ]
 }
