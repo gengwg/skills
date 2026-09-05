@@ -29,14 +29,21 @@ def git(d, *args):
         return ""
 
 
-def repo_dir(cmd, cwd):
-    """Last `cd X` or `git -C X` in the command, else the session cwd."""
-    for cd, gc in reversed(re.findall(r"(?:^|[;&|\n]\s*)cd\s+(\S+)|git\s+-C\s+(\S+)", cmd)):
-        p = os.path.expanduser((cd or gc).strip("\"'"))
-        if "$" in p:
-            continue
-        return p if os.path.isabs(p) else os.path.join(cwd, p)
-    return cwd
+def resolve(p, base):
+    p = os.path.expanduser(p.strip("\"'"))
+    if "$" in p:
+        return base
+    return p if os.path.isabs(p) else os.path.normpath(os.path.join(base, p))
+
+
+def statements(cmd, cwd):
+    """(statement, repo dir) pairs. `cd` carries forward; `git -C` applies to its own statement only."""
+    for stmt in re.split(r"\n|&&|\|\||;", cmd):
+        m = re.match(r"\s*\(?\s*cd\s+(\S+)", stmt)
+        if m:
+            cwd = resolve(m.group(1), cwd)
+        gc = re.search(r"\bgit\s+-[Cc]\s+(\S+)", stmt)
+        yield stmt, (resolve(gc.group(1), cwd) if gc else cwd)
 
 
 def submodules(d):
@@ -84,18 +91,14 @@ def kubectl_guard(cmd):
         out("deny", f"kubectl write without explicit --context: `{stmt.strip()[:120]}`. Add --context=<cluster>; never rely on the current context.")
 
 
-def bash(cmd, cwd):
-    cmd = strip_heredocs(cmd)  # heredoc bodies are data, not commands
-    d = repo_dir(cmd, cwd)
-    if "kubectl" in cmd:
-        kubectl_guard(cmd)
-    commit = re.search(GIT + r"commit\b" + SEG, cmd)
-    push = re.search(GIT + r"push\b" + SEG, cmd)
-    add = re.search(GIT + r"add\b" + SEG, cmd)
+def git_guard(stmt, d):
+    commit = re.search(GIT + r"commit\b" + SEG, stmt)
+    push = re.search(GIT + r"push\b" + SEG, stmt)
+    add = re.search(GIT + r"add\b" + SEG, stmt)
 
     if push and re.search(r"(\s-f\b|--force)", push.group(0)):
         out("deny", "git push --force is not allowed. Push a new commit instead.")
-    if (commit or push) and "--no-verify" in cmd:
+    if (commit or push) and "--no-verify" in stmt:
         out("deny", "--no-verify is not allowed.")
     if push:
         raw = push.group(0).split()[push.group(0).split().index("push") + 1:]
@@ -127,10 +130,9 @@ def bash(cmd, cwd):
                 if dirty:
                     out("deny", f"git add {toks} would stage submodule pin(s) {sorted(dirty)}. Add files explicitly.")
 
-    if re.search(r"glab\s+mr\s+merge\b|\bgh\s+pr\s+merge\b", cmd) or re.search(r"glab\s+api\b" + SEG + r"merge_requests/\d+/merge\b", cmd):
-        out("ask", "Merging is a human decision. Confirm this merge.")
 
-    for m in re.finditer(r"\brm\s+(?:-\w*r\w*\s+|-\w*f\w*\s+|--recursive\s+|--force\s+)+(" + SEG + ")", cmd):
+def rm_guard(stmt, d):
+    for m in re.finditer(r"\brm\s+(?:-\w*r\w*\s+|-\w*f\w*\s+|--recursive\s+|--force\s+)+(" + SEG + ")", stmt):
         flags = m.group(0)
         if not (re.search(r"-\w*r|--recursive", flags) and re.search(r"-\w*f|--force", flags)):
             continue
@@ -144,9 +146,21 @@ def bash(cmd, cwd):
             if not (p.startswith(SAFE_RM_PREFIXES) or "/worktrees/" in p):
                 out("ask", f"rm -rf outside scratchpad/worktrees: {p}")
 
-    if re.search(r"glab\s+api\b" + SEG + r"(?:--method|-X)\s*(?:PUT|POST)\b", cmd) and "--input" in cmd \
-            and not re.search(r"content-type", cmd, re.I):
-        out("deny", "glab api PUT/POST --input returns HTTP 415 (exit 0!) without --header \"Content-Type: application/json\". Add the header.")
+
+def bash(cmd, cwd):
+    cmd = strip_heredocs(cmd)  # heredoc bodies are data, not commands
+    if "kubectl" in cmd:
+        kubectl_guard(cmd)
+    for stmt, d in statements(cmd, cwd):
+        git_guard(stmt, d)
+        rm_guard(stmt, d)
+
+        if re.search(r"glab\s+mr\s+merge\b|\bgh\s+pr\s+merge\b", stmt) or re.search(r"glab\s+api\b" + SEG + r"merge_requests/\d+/merge\b", stmt):
+            out("ask", "Merging is a human decision. Confirm this merge.")
+
+        if re.search(r"glab\s+api\b" + SEG + r"(?:--method|-X)\s*(?:PUT|POST)\b", stmt) and "--input" in stmt \
+                and not re.search(r"content-type", stmt, re.I):
+            out("deny", "glab api PUT/POST --input returns HTTP 415 (exit 0!) without --header \"Content-Type: application/json\". Add the header.")
 
 
 def main():
