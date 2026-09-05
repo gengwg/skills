@@ -14,6 +14,5 @@
     "./verify-alert-before-replying",
     "./nvidia-bug-report-gpu-operator",
     "./kubespray-node-rejoin"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }
