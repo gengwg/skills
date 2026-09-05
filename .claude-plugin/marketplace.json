@@ -1,0 +1,13 @@
+{
+  "name": "gengwg",
+  "description": "SRE and on-call plugins by gengwg.",
+  "owner": { "name": "Weigang Geng", "url": "https://github.com/gengwg" },
+  "plugins": [
+    {
+      "name": "oncall-sre",
+      "source": "./",
+      "description": "On-call SRE skills (Grafana alerting/OnCall, GPU nodes, kubespray) plus kubectl/git guardrail hooks.",
+      "version": "0.1.0"
+    }
+  ]
+}

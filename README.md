@@ -12,6 +12,19 @@ npx skills add gengwg/skills -s <name> -g    # global install
 npx skills add gengwg/skills -s medium-post -g
 ```
 
+## Claude Code plugin
+
+The on-call SRE set (Grafana alerting/OnCall, GPU nodes, kubespray) is also
+packaged as the `oncall-sre` plugin, with guardrail hooks: kubectl writes need
+an explicit `--context`, no `git push --force` or commits on protected
+branches, submodule pins are not bumped by accident, merges and `rm -rf` ask
+first, and a session-start line shows the current kube context and branch.
+
+```bash
+/plugin marketplace add gengwg/skills
+/plugin install oncall-sre@gengwg
+```
+
 | Skill | Use for |
 |---|---|
 | [medium-post](medium-post/SKILL.md) | Publishing markdown to Medium via browser automation (no API needed) |
