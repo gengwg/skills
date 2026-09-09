@@ -29,21 +29,33 @@ def git(d, *args):
         return ""
 
 
-def resolve(p, base):
+def resolve(p, base, env=None):
+    """Absolute path for a cd / git -C target. Falls back to `base` when it cannot be
+    known, which fails CLOSED: the guard then judges the session's repo, so a real
+    commit on a protected branch is still caught."""
     p = os.path.expanduser(p.strip("\"'"))
-    if "$" in p:
+    # `cd "$S/tt/work"` after `S=/tmp/...` is a repo the guard CAN know, and getting it
+    # wrong denied commits in a throwaway repo because the session sat on develop.
+    if env:
+        p = re.sub(r"\$\{(\w+)\}|\$(\w+)", lambda m: env.get(m.group(1) or m.group(2), "\0"), p)
+    if "$" in p or "\0" in p:
         return base
     return p if os.path.isabs(p) else os.path.normpath(os.path.join(base, p))
 
 
 def statements(cmd, cwd):
     """(statement, repo dir) pairs. `cd` carries forward; `git -C` applies to its own statement only."""
+    env = {}
     for stmt in re.split(r"\n|&&|\|\||;", cmd):
+        # Plain VAR=value assignments only, so a path built from them resolves. An
+        # env-prefixed command (SSH_AUTH_SOCK=... git push) lands here too; harmless.
+        for k, v in re.findall(r"(?:^|\s)(\w+)=(\S*)", stmt):
+            env[k] = v.strip("\"'")
         m = re.match(r"\s*\(?\s*cd\s+(\S+)", stmt)
         if m:
-            cwd = resolve(m.group(1), cwd)
+            cwd = resolve(m.group(1), cwd, env)
         gc = re.search(r"\bgit\s+-[Cc]\s+(\S+)", stmt)
-        yield stmt, (resolve(gc.group(1), cwd) if gc else cwd)
+        yield stmt, (resolve(gc.group(1), cwd, env) if gc else cwd)
 
 
 def submodules(d):
