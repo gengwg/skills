@@ -144,11 +144,11 @@ def git_guard(stmt, d):
 
 
 def rm_guard(stmt, d):
-    for m in re.finditer(r"\brm\s+(?:-\w*r\w*\s+|-\w*f\w*\s+|--recursive\s+|--force\s+)+(" + SEG + ")", stmt):
-        flags = m.group(0)
+    for m in re.finditer(r"\brm\s+((?:-\w+\s+|--recursive\s+|--force\s+)+)(" + SEG + ")", stmt):
+        flags = m.group(1)  # flags only; paths like alert-relay/ contain a bare "-r"
         if not (re.search(r"-\w*r|--recursive", flags) and re.search(r"-\w*f|--force", flags)):
             continue
-        for t in m.group(1).split():
+        for t in m.group(2).split():
             if t.startswith("-"):
                 continue
             t = t.strip("\"'")
