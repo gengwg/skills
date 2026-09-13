@@ -27,6 +27,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [pygame-headless-test-and-release](pygame-headless-test-and-release/SKILL.md) | Test, screenshot, and release pygame apps without a display | |
 | [mirror-repo-data-to-notion](mirror-repo-data-to-notion/SKILL.md) | Mirror git-managed data into Notion with detectable drift | |
 | [venv-to-uv-migration](venv-to-uv-migration/SKILL.md) | Move a Python-tooling repo from venv+pip to uv — persistent .venv vs stateless `uv run` | |
+| [pto-planner](pto-planner/SKILL.md) | Pick low-impact PTO days from the calendar, then block, file, announce, and remind | |
 
 ## Claude Code plugin
 
