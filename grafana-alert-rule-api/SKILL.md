@@ -17,7 +17,7 @@ Rules created via the API carry `"provenance": "api"`; rules created in the UI h
 
 ```sh
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "$GRAFANA/api/v1/provisioning/alert-rules/$UID" | jq 'has("provenance")'
+  "$GRAFANA/api/v1/provisioning/alert-rules/$RULE_UID" | jq 'has("provenance")'
 ```
 
 - `provenance` = `"api"` → PUT **without** `X-Disable-Provenance`, or you get **409 Conflict**.
@@ -71,15 +71,15 @@ A rule change isn't done when the PUT succeeds:
 curl -s -H "Authorization: Bearer $TOKEN" "$GRAFANA/api/v1/provisioning/alert-rules" | jq -r '.[] | [.uid, .title] | @tsv'
 
 # Read one rule
-curl -s -H "Authorization: Bearer $TOKEN" "$GRAFANA/api/v1/provisioning/alert-rules/$UID"
+curl -s -H "Authorization: Bearer $TOKEN" "$GRAFANA/api/v1/provisioning/alert-rules/$RULE_UID"
 
 # Update (API-provenance rule: NO X-Disable-Provenance)
 curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d @rule.json "$GRAFANA/api/v1/provisioning/alert-rules/$UID"
+  -d @rule.json "$GRAFANA/api/v1/provisioning/alert-rules/$RULE_UID"
 
 # Update (UI-created rule: WITH the header)
 curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -H "X-Disable-Provenance: true" -d @rule.json "$GRAFANA/api/v1/provisioning/alert-rules/$UID"
+  -H "X-Disable-Provenance: true" -d @rule.json "$GRAFANA/api/v1/provisioning/alert-rules/$RULE_UID"
 ```
 
 ## Common mistakes
