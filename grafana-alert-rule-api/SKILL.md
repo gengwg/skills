@@ -1,13 +1,13 @@
 ---
 name: grafana-alert-rule-api
-description: Use when creating or editing Grafana-managed alert rules via the provisioning API (curl/scripts, not the UI) — especially on a 409 conflict, when keep_firing_for silently doesn't stick, when fields vanish after a PUT, or when a rule group's evaluation interval changes unexpectedly
+description: Use when creating or editing Grafana-managed alert rules via the provisioning API (curl/scripts, not the UI) — especially on a 409 conflict, when keep_firing_for silently doesn't stick, when fields vanish after a PUT, when a rule group's evaluation interval changes unexpectedly, or when a PUT returns 200 with a "Deprecated API" warning and nothing changes (Grafana 13)
 ---
 
 # Grafana Alert Rule Provisioning API
 
 ## Overview
 
-Editing Grafana-managed alert rules over `/api/v1/provisioning/alert-rules` has four traps that all return 200 (or a confusing 409) while doing the wrong thing. Every one has cost real debugging time.
+Editing Grafana-managed alert rules over `/api/v1/provisioning/alert-rules` has five traps that all return 200 (or a confusing 409) while doing the wrong thing. Every one has cost real debugging time.
 
 ## The traps
 
@@ -47,6 +47,21 @@ If it changed, fix it by PUTting the group document back — GET it first and re
 curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d @group.json "$GRAFANA/api/v1/provisioning/folder/$FOLDER_UID/rule-groups/$GROUP"
 ```
+
+### 5. On Grafana 13 the legacy PUT can be a silent no-op
+
+A rule PUT returns 200 with a `Warning: 299 ... Deprecated API` response header and persists nothing: the rule's `updated` timestamp and version stay put. Tools that wrap this endpoint (MCP servers, scripts) inherit the no-op. The ruler group POST is no way around it either: it returns 400 when the group mixes provenance.
+
+Write through the App Platform API instead, as a merge patch:
+
+```sh
+NS=$(curl -s -H "Authorization: Bearer $TOKEN" "$GRAFANA/api/frontend/settings" | jq -r .namespace)
+curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/merge-patch+json" \
+  -d '{"spec":{"paused":false}}' \
+  "$GRAFANA/apis/rules.alerting.grafana.app/v0alpha1/namespaces/$NS/alertrules/$UID"
+```
+
+The namespace is `default` on self-hosted Grafana and `stacks-<id>` on Grafana Cloud. Take it from `/api/frontend/settings` instead of guessing. Confirm that `metadata.resourceVersion` changed on the GET-back. One token's PATCH has been seen to return success without bumping it; if that happens, retry with a different credential rather than trusting the response.
 
 ## Verify-after-write (always)
 
@@ -88,4 +103,5 @@ curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/j
 - Trusting the 200 — `keepFiringFor` typo-cases return success and do nothing.
 - PUTting a minimal JSON body — everything not sent is deleted.
 - Skipping the group-interval check after a rule edit.
+- Ignoring a `Deprecated API` warning header on Grafana 13, where the legacy PUT may have saved nothing.
 - Updating the live rule but not the IaC file (or vice versa).
