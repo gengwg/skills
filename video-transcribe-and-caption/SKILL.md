@@ -27,7 +27,7 @@ Only the ffmpeg `subtitles` filter needs a real ffmpeg build with libass
 ### 2. Download
 
 ```bash
-uvx yt-dlp -f "best[ext=mp4]" -o "video.%(ext)s" --no-playlist "<url>"
+uvx yt-dlp -f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b" --merge-output-format mp4 -o "video.%(ext)s" --no-playlist "<url>"
 uvx yt-dlp --skip-download -j "<url>" | jq '{title, uploader, upload_date, description}'
 ```
 
@@ -88,7 +88,7 @@ ffmpeg -hide_banner -loglevel error -y -i video.mp4 \
 
 Keep the SRT next to the output so a single line can be fixed and re-rendered
 in under a minute. For soft (toggleable) subtitles instead, mux with
-`-c copy -c:s mov_text`.
+`ffmpeg -i video.mp4 -i video.srt -c copy -c:s mov_text video_cc.mp4`.
 
 ## Deliverables
 
