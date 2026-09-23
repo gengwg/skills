@@ -42,6 +42,9 @@ first, and a session-start line shows the current kube context and branch.
 ```bash
 /plugin marketplace add gengwg/skills
 /plugin install oncall-sre@gengwg
+
+/plugin marketplace update gengwg
+/plugin update oncall-sre@gengwg
 ```
 
 Both commands are needed on every machine; an `extraKnownMarketplaces` entry in
