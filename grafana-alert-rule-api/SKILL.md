@@ -58,7 +58,7 @@ Write through the App Platform API instead, as a merge patch:
 NS=$(curl -s -H "Authorization: Bearer $TOKEN" "$GRAFANA/api/frontend/settings" | jq -r .namespace)
 curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/merge-patch+json" \
   -d '{"spec":{"paused":false}}' \
-  "$GRAFANA/apis/rules.alerting.grafana.app/v0alpha1/namespaces/$NS/alertrules/$UID"
+  "$GRAFANA/apis/rules.alerting.grafana.app/v0alpha1/namespaces/$NS/alertrules/$RULE_UID"
 ```
 
 The namespace is `default` on self-hosted Grafana and `stacks-<id>` on Grafana Cloud. Take it from `/api/frontend/settings` instead of guessing. Confirm that `metadata.resourceVersion` changed on the GET-back. One token's PATCH has been seen to return success without bumping it; if that happens, retry with a different credential rather than trusting the response.
