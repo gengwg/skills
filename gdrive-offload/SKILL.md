@@ -22,11 +22,16 @@ A My Drive mount (e.g. `~/gdrive`) never shows shared drive files. If the user s
 
 ### 1. Inventory and confirm
 
+The usual folders to clear out are `~/Downloads`, `~/Desktop` and `~/Documents`. Handle one folder at a time, each with its own confirmation. `~/Documents` is where apps drop their own data, so expect more to skip there.
+
 List what is there before touching anything:
 
 ```sh
 ls -Ap <dir>
+du -sh <dir>
 ```
+
+Say so and stop if the folder is empty.
 
 Leave these out of the upload:
 
