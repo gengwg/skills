@@ -39,7 +39,7 @@ an explicit `--context`, no `git push --force` or commits on protected
 branches, submodule pins are not bumped by accident, merges and `rm -rf` ask
 first, and a session-start line shows the current kube context and branch.
 
-It also ships `/explain-codebase [path]`, which walks a repo (or one subsystem)
+It also ships `/oncall-sre:explain-codebase [path]`, which walks a repo (or one subsystem)
 for a newcomer: structure, the things you break by not knowing them, how it
 runs, and what to read next.
 

@@ -1,6 +1,6 @@
 ---
 description: Explain a codebase to a newcomer — structure, what matters, what to read next
-argument-hint: [path or subsystem, defaults to the whole repo]
+argument-hint: "[path]"
 ---
 
 Explain this codebase to a newcomer. Scope: $ARGUMENTS (empty means the whole
