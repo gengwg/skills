@@ -28,6 +28,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [mirror-repo-data-to-notion](mirror-repo-data-to-notion/SKILL.md) | Mirror git-managed data into Notion with detectable drift | |
 | [venv-to-uv-migration](venv-to-uv-migration/SKILL.md) | Move a Python-tooling repo from venv+pip to uv — persistent .venv vs stateless `uv run` | |
 | [gdrive-offload](gdrive-offload/SKILL.md) | Upload files to Google Drive with rclone, verify, then delete local copies | |
+| [slack-feedback-to-issues](slack-feedback-to-issues/SKILL.md) | File deduplicated GitLab issues from a Slack feedback channel, then watch for new reports | |
 | [pto-planner](pto-planner/SKILL.md) | Pick low-impact PTO days from the calendar, then block, file, announce, and remind | |
 | [video-transcribe-and-caption](video-transcribe-and-caption/SKILL.md) | Transcribe an uncaptioned video with local Whisper, fix misheard lines, burn in captions | |
 | [apt-repo-key-rotation](apt-repo-key-rotation/SKILL.md) | Fix NO_PUBKEY on one APT repo after the vendor rotates its signing key | |
