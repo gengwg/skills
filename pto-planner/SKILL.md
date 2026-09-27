@@ -71,7 +71,7 @@ Keep it scannable. The user wants a decision, not a calendar transcript.
 
 Nothing gets created, sent, or scheduled until the user says go. Then work in order, because each step assumes the one before it landed.
 
-**a. Block the work calendar.** An all-day event on the *work* calendar, marked free rather than busy — PTO shouldn't read as a meeting block, and the field for that is spelled differently in every calendar API (`transparent`, `free`, `availability`), so check before assuming. Title it plainly — "PTO", or "PTO — <reason>" only if the reason is something they'd say out loud to the whole company.
+**a. Block the work calendar.** If the calendar has an out-of-office event type (Google Calendar does), use it: it's what status syncs and auto-decline key off. Google rejects all-day OOO events, so make it midnight to midnight in the user's timezone. Otherwise, an all-day event on the *work* calendar, marked free rather than busy — PTO shouldn't read as a meeting block, and the field for that is spelled differently in every calendar API (`transparent`, `free`, `availability`), so check before assuming. Title it plainly — "PTO", or "PTO — <reason>" only if the reason is something they'd say out loud to the whole company.
 
 **b. File it in the HR system, if the length requires it.** Try the connector. If it's not authenticated, it will offer you an auth handshake and nothing else — say that plainly, tell them where the request lives in that product, and don't imply anything was submitted. Being logged in on their end doesn't give you their session.
 
@@ -81,7 +81,7 @@ Nothing gets created, sent, or scheduled until the user says go. Then work in or
 
 **d. Schedule the reminder.** One more message to the same channel, 1–2 days before the first day, in the morning in the user's timezone. This is the one people actually act on. Use the scheduled-message tool rather than promising to remember.
 
-**e. Hand off what you can't do.** Say it explicitly: the calendar block won't decline existing invites and won't notify anyone, Slack status is theirs to set, and if the length crosses the approval threshold, the manager conversation still has to happen. Until that approval exists, the time off is provisional — don't write about it as confirmed.
+**e. Hand off what you can't do.** Say it explicitly: the calendar block won't notify anyone and won't decline existing invites unless auto-decline is on, Slack status is theirs to set unless a calendar sync handles it (check the local config), and if the length crosses the approval threshold, the manager conversation still has to happen. Until that approval exists, the time off is provisional — don't write about it as confirmed.
 
 ### 8. Keep private things out of everything you send
 
