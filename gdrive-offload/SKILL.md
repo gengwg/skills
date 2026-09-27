@@ -32,7 +32,10 @@ Leave these out of the upload:
 
 - Lock files (`.~lock.*#`, `~$*`). A lock file means the document may be open. Check with `pgrep -x soffice.bin` and ask the user to save and close it before you delete the original.
 - Tool and config dirs (`.claude/`, `.git/`, `.cache/`).
-- Anything that looks personal rather than work data, when the target is a shared drive. Ask.
+- Anything that looks personal rather than work data, when the target is a shared drive. Ask. Common cases:
+  - Browser profile backups (`Restore Firefox/`, `*.default-release/`, Chrome `User Data/`). They hold saved passwords, cookies and history, so treat them as credentials and never put them on a shared drive.
+  - Messaging app data (`xwechat_files/`, `WeChat Files/`, `Telegram Desktop/`, Signal or WhatsApp exports), which contains private chats and received files.
+  - App-managed folders that apps create in `~/Documents` (game saves, `Zoom/` recordings, virtual machine images). Uploading them breaks nothing, but they are rarely what the user means.
 
 Show the user the exact file list and the destination, and get a yes. Deletion is irreversible.
 
