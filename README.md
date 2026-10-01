@@ -33,6 +33,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [pto-planner](pto-planner/SKILL.md) | Pick low-impact PTO days from the calendar, then block, file, announce, and remind | |
 | [video-transcribe-and-caption](video-transcribe-and-caption/SKILL.md) | Transcribe an uncaptioned video with local Whisper, fix misheard lines, burn in captions | |
 | [apt-repo-key-rotation](apt-repo-key-rotation/SKILL.md) | Fix NO_PUBKEY on one APT repo after the vendor rotates its signing key | |
+| [cpu-governor-persist](cpu-governor-persist/SKILL.md) | Set the CPU frequency governor so it survives reboot: systemd unit traps, fail-closed playbook, reboot acceptance | |
 
 ## Claude Code plugin
 

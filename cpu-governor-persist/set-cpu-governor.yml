@@ -1,0 +1,156 @@
+---
+# Set the CPU frequency scaling governor and keep it across reboots.
+#
+# Canary one host, then drop --limit:
+#   ansible-playbook -i <inventory> set-cpu-governor.yml \
+#     -e cpu_governor_hosts=<group> --limit '<group>[0]'
+#
+# Local test (must run under sudo so become is a no-op):
+#   sudo ansible-playbook -i localhost, -c local -e cpu_governor_hosts=all set-cpu-governor.yml
+#
+# Acceptance is the reboot, not the run. Revert with -e cpu_governor=<previous>.
+# Remove the mechanism with `systemctl disable --now cpu-governor.service`
+# and delete the unit file.
+- name: Set the CPU frequency governor
+  hosts: "{{ cpu_governor_hosts | default('cpu_governor_hosts_not_set') }}"
+  gather_facts: false
+  become: true
+  vars:
+    cpu_governor: performance
+    cpu_governor_unit: cpu-governor.service
+  tasks:
+    - name: Read the governors available on every cpufreq policy
+      # Every policy, not cpu0: a rejected scaling_governor write is silently
+      # ignored, so an unsupported value leaves the host looking configured.
+      ansible.builtin.shell:
+        cmd: set -o pipefail && cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_available_governors | sort -u
+        executable: /bin/bash
+      register: available
+      changed_when: false
+      check_mode: false
+
+    - name: Fail unless every policy offers the requested governor
+      ansible.builtin.assert:
+        that:
+          - available.stdout_lines | length == 1
+          - cpu_governor in available.stdout_lines[0].split()
+        fail_msg: >-
+          {{ inventory_hostname }}: {{ cpu_governor }} not offered by every policy
+          (have: {{ available.stdout_lines | join(' / ') }})
+
+    - name: Count cpufreq policies against configured and online CPUs
+      # Not nproc: it is affinity-scoped, so offlining a CPU drops it and its
+      # policy together and the comparison goes blind.
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail &&
+          echo "$(ls -d /sys/devices/system/cpu/cpu*/cpufreq 2>/dev/null | wc -l)
+          $(getconf _NPROCESSORS_CONF)
+          $(cat /sys/devices/system/cpu/online)
+          $(cat /sys/devices/system/cpu/present)"
+        executable: /bin/bash
+      register: cpu_census
+      changed_when: false
+      check_mode: false
+
+    - name: Fail if any CPU is offline or has no cpufreq policy
+      ansible.builtin.assert:
+        that:
+          - cpu_census.stdout.split()[0] == cpu_census.stdout.split()[1]
+          - cpu_census.stdout.split()[2] == cpu_census.stdout.split()[3]
+        fail_msg: >-
+          {{ inventory_hostname }}: {{ cpu_census.stdout.split()[0] }} policies for
+          {{ cpu_census.stdout.split()[1] }} CPUs, online={{ cpu_census.stdout.split()[2] }}
+          present={{ cpu_census.stdout.split()[3] }}; a CPU without a policy keeps the default
+
+    - name: Find other services that manage the governor
+      # power-profiles-daemon, tuned, tlp and friends reassert the governor
+      # after this unit runs. The unit then reports success with the setting
+      # gone, and nothing short of a reboot shows it. is-enabled too: a manager
+      # installed but not yet started would pass is-active and win at boot.
+      ansible.builtin.shell:
+        cmd: for u in power-profiles-daemon tuned tlp ondemand cpufrequtils; do if systemctl is-active --quiet "$u" || systemctl is-enabled --quiet "$u" 2>/dev/null; then echo "$u"; fi; done
+      register: managers
+      changed_when: false
+      check_mode: false
+
+    - name: Fail if another governor manager is active
+      ansible.builtin.assert:
+        that: managers.stdout_lines | length == 0
+        fail_msg: >-
+          {{ inventory_hostname }}: {{ managers.stdout_lines | join(', ') }} is active
+          and will overwrite the governor; mask it or configure it, then rerun
+
+    - name: Read the governor currently set on every policy
+      ansible.builtin.shell:
+        cmd: set -o pipefail && cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor | sort -u
+        executable: /bin/bash
+      register: current
+      changed_when: false
+      check_mode: false
+
+    - name: Install the boot-time unit
+      # `set -e` turns a partial write into a failed unit. No ConditionPathExists:
+      # a failed condition SKIPS the unit and reports the start job successful.
+      # `$g` is safe: systemd expands $VAR only as a word of its own.
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ cpu_governor_unit }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Set CPU frequency governor to {{ cpu_governor }}
+          After=sysinit.target
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/sh -c 'set -e; for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo {{ cpu_governor }} > "$g"; done'
+
+          [Install]
+          WantedBy=multi-user.target
+      register: unit
+
+    - name: Enable the unit
+      ansible.builtin.systemd:
+        name: "{{ cpu_governor_unit }}"
+        enabled: true
+        daemon_reload: true
+      when: not ansible_check_mode
+
+    - name: Apply it now
+      # Restarting the unit, not writing sysfs here, so the boot path is the
+      # path being exercised.
+      ansible.builtin.systemd:
+        name: "{{ cpu_governor_unit }}"
+        state: restarted
+      when:
+        - not ansible_check_mode
+        - unit is changed or current.stdout_lines != [cpu_governor]
+
+    - name: Read back whether the unit is enabled for boot
+      ansible.builtin.command: systemctl is-enabled {{ cpu_governor_unit }}  # noqa: command-instead-of-module
+      register: enabled_state
+      changed_when: false
+      failed_when: false
+      when: not ansible_check_mode
+
+    - name: Read the governor back from every policy
+      ansible.builtin.shell:
+        cmd: set -o pipefail && cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor | sort -u
+        executable: /bin/bash
+      register: after
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: Fail unless the change took and is enabled for boot
+      ansible.builtin.assert:
+        that:
+          - after.stdout_lines == [cpu_governor]
+          - enabled_state.stdout | trim == 'enabled'
+        fail_msg: >-
+          {{ inventory_hostname }}: governor is {{ after.stdout_lines | join(', ') }}
+          (want {{ cpu_governor }}), unit is {{ enabled_state.stdout | trim }} (want enabled)
+        success_msg: "{{ inventory_hostname }}: all policies {{ cpu_governor }}, {{ cpu_governor_unit }} enabled for boot"
+      when: not ansible_check_mode
