@@ -34,6 +34,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [video-transcribe-and-caption](video-transcribe-and-caption/SKILL.md) | Transcribe an uncaptioned video with local Whisper, fix misheard lines, burn in captions | |
 | [apt-repo-key-rotation](apt-repo-key-rotation/SKILL.md) | Fix NO_PUBKEY on one APT repo after the vendor rotates its signing key | |
 | [cpu-governor-persist](cpu-governor-persist/SKILL.md) | Set the CPU frequency governor so it survives reboot: systemd unit traps, fail-closed playbook, reboot acceptance | |
+| [glab-api-pitfalls](glab-api-pitfalls/SKILL.md) | glab writes that exit 0 and do the wrong thing: literal @file, wiped description, wrong-repo target, cross-project refs | |
 
 ## Claude Code plugin
 
