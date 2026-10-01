@@ -22,6 +22,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) | oncall-sre |
 | [kubespray-node-rejoin](kubespray-node-rejoin/SKILL.md) | Rejoin a node to a kubespray cluster: scoped runs, recap reading, post-verification | oncall-sre |
 | [tofu-gitlab-state-local-apply](tofu-gitlab-state-local-apply/SKILL.md) | Local tofu plan/apply against GitLab-managed state without hitting the wrong state or a fake apply | oncall-sre |
+| [dcgm-telemetry-pitfalls](dcgm-telemetry-pitfalls/SKILL.md) | DCGM series that read as fault or health and are neither: event-created XID, latched field 170, exporter-dropped NVLink, aggregated PROF, DCGM 3 vs 4 names | oncall-sre |
 | [medium-post](medium-post/SKILL.md) | Publishing markdown to Medium via browser automation (no API needed) | |
 | [wifi-powersave-fix](wifi-powersave-fix/SKILL.md) | Fix laggy WiFi on Linux by disabling NetworkManager power saving | |
 | [dotfiles-multi-machine-sync](dotfiles-multi-machine-sync/SKILL.md) | Dotfiles repo with an idempotent symlink installer, synced across machines | |
