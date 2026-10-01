@@ -69,7 +69,10 @@
       # gone, and nothing short of a reboot shows it. is-enabled too: a manager
       # installed but not yet started would pass is-active and win at boot.
       ansible.builtin.shell:
-        cmd: for u in power-profiles-daemon tuned tlp ondemand cpufrequtils; do if systemctl is-active --quiet "$u" || systemctl is-enabled --quiet "$u" 2>/dev/null; then echo "$u"; fi; done
+        cmd: >-
+          for u in power-profiles-daemon tuned tlp ondemand cpufrequtils; do
+            if systemctl is-active --quiet "$u" || systemctl is-enabled --quiet "$u" 2>/dev/null; then echo "$u"; fi;
+          done
       register: managers
       changed_when: false
       check_mode: false
