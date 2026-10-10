@@ -86,6 +86,11 @@ class ClaGuard(unittest.TestCase):
         d = repo(self.tmp, self.K8S, f"fix\n\n{TRAILER}")
         self.assertEqual(decide("git push origin fix-branch", d), "deny")
 
+    @unittest.skipIf(subprocess.run(["gh", "auth", "status"], capture_output=True).returncode, "gh not authenticated")
+    def test_push_from_fork_only_clone_denied(self):
+        d = repo(self.tmp, "https://github.com/gengwg/kubespray.git", f"fix\n\n{TRAILER}")
+        self.assertEqual(decide("git push origin fix-branch", d), "deny")
+
     def test_push_of_clean_commit_is_silent(self):
         d = repo(self.tmp, self.K8S, "fix\n\nSigned-off-by: Dev <dev@example.com>")
         self.assertIsNone(decide("git push origin fix-branch", d))

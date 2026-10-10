@@ -147,14 +147,31 @@ def git_guard(stmt, d):
                     out("deny", f"git add {toks} would stage submodule pin(s) {sorted(dirty)}. Add files explicitly.")
 
 
+def cla_fork(remotes):
+    """A clone of only your fork has no Kubernetes remote, so ask GitHub for each fork's parent."""
+    for repo in set(re.findall(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?\s", remotes)):
+        try:
+            parent = subprocess.run(["gh", "api", f"repos/{repo}", "--jq", ".parent.full_name // empty"],
+                                    capture_output=True, text=True, timeout=5).stdout.strip()
+        except Exception:
+            continue
+        if CLA_REMOTE.search(f"github.com/{parent}"):
+            return True
+    return False
+
+
 def cla_guard(stmt, d, raw):
     commit = re.search(GIT + r"commit\b", stmt)
-    if not (commit or re.search(GIT + r"push\b", stmt)) or not CLA_REMOTE.search(git(d, "remote", "-v")):
+    push = re.search(GIT + r"push\b", stmt)
+    if not (commit or push):
         return
     # A commit's message can sit in a heredoc, so read the raw command. A push checks every
     # commit not yet on a remote, which also catches trailers added by other tools.
     msg = raw if commit else git(d, "log", "--format=%B", "HEAD", "--not", "--remotes")
-    if TRAILER.search(msg):
+    if not TRAILER.search(msg):
+        return
+    remotes = git(d, "remote", "-v")
+    if CLA_REMOTE.search(remotes) or (push and cla_fork(remotes)):
         out("deny", "EasyCLA rejects Co-Authored-By trailers it cannot match to a CLA signer. "
                     "Remove the trailer (keep Signed-off-by).")
 
