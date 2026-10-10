@@ -2,7 +2,8 @@
 """PreToolUse guard for Bash. Reads hook JSON on stdin, prints a permission decision or nothing.
 
 Denies: kubectl writes without --context, switching the global kube context, git push --force,
---no-verify, commits/pushes on protected branches, submodule pin bumps.
+--no-verify, commits/pushes on protected branches, submodule pin bumps, Co-Authored-By
+trailers in Kubernetes-org repos (EasyCLA).
 Asks: MR/PR merges, rm -rf outside scratch dirs.
 """
 import json, os, re, subprocess, sys
@@ -12,6 +13,9 @@ KUBE_WRITE = {"apply", "create", "delete", "patch", "edit", "replace", "scale", 
 SAFE_RM_PREFIXES = ("/tmp/claude",)
 SEG = r"[^\n;|&]*"  # stay within one shell statement
 GIT = r"\bgit\b(?:\s+-[Cc]\s+\S+|\s+--\S+)*\s+"  # git + global opts, then the subcommand
+# EasyCLA fails any co-author it cannot match to a GitHub account with a signed CLA.
+CLA_REMOTE = re.compile(r"github\.com[:/]kubernetes(?:-[\w-]+)?/", re.I)
+TRAILER = re.compile(r"^\s*co-authored-by:", re.I | re.M)
 
 
 def out(decision, reason):
@@ -143,6 +147,18 @@ def git_guard(stmt, d):
                     out("deny", f"git add {toks} would stage submodule pin(s) {sorted(dirty)}. Add files explicitly.")
 
 
+def cla_guard(stmt, d, raw):
+    commit = re.search(GIT + r"commit\b", stmt)
+    if not (commit or re.search(GIT + r"push\b", stmt)) or not CLA_REMOTE.search(git(d, "remote", "-v")):
+        return
+    # A commit's message can sit in a heredoc, so read the raw command. A push checks every
+    # commit not yet on a remote, which also catches trailers added by other tools.
+    msg = raw if commit else git(d, "log", "--format=%B", "HEAD", "--not", "--remotes")
+    if TRAILER.search(msg):
+        out("deny", "EasyCLA rejects Co-Authored-By trailers it cannot match to a CLA signer. "
+                    "Remove the trailer (keep Signed-off-by).")
+
+
 def rm_guard(stmt, d):
     for m in re.finditer(r"\brm\s+((?:-\w+\s+|--recursive\s+|--force\s+)+)(" + SEG + ")", stmt):
         flags = m.group(1)  # flags only; paths like alert-relay/ contain a bare "-r"
@@ -190,6 +206,7 @@ def bash(cmd, cwd):
     for stmt, d in statements(cmd, cwd):
         local("statement", stmt, d)
         git_guard(stmt, d)
+        cla_guard(stmt, d, raw)
         rm_guard(stmt, d)
 
         if re.search(r"glab\s+mr\s+merge\b|\bgh\s+pr\s+merge\b", stmt) or re.search(r"glab\s+api\b" + SEG + r"merge_requests/\d+/merge\b", stmt):

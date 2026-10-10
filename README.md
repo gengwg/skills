@@ -45,7 +45,8 @@ npx skills add gengwg/skills -s medium-post -g
 The on-call SRE set (Grafana alerting/OnCall, GPU nodes, kubespray) is also
 packaged as the `oncall-sre` plugin, with guardrail hooks: kubectl writes need
 an explicit `--context`, no `git push --force` or commits on protected
-branches, submodule pins are not bumped by accident, merges and `rm -rf` ask
+branches, submodule pins are not bumped by accident, no `Co-Authored-By`
+trailers in Kubernetes-org repos (EasyCLA rejects them), merges and `rm -rf` ask
 first, and a session-start line shows the current kube context and branch.
 
 It also ships `/oncall-sre:explain-codebase [path]`, which walks a repo (or one subsystem)
