@@ -44,7 +44,8 @@ TRAILER = "Co-Authored-By: Claude <noreply@anthropic.com>"
 
 def repo(tmp, remote, message="fix thing"):
     """A repo on a feature branch with one local commit and one remote."""
-    run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "commit.gpgsign=false", *a],
+    run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "commit.gpgsign=false", "-c", "user.name=t",
+                                     "-c", "user.email=t@example.com", *a],
                                     check=True, capture_output=True)
     run("init", "-q", "-b", "fix-branch")
     run("remote", "add", "upstream", remote)
