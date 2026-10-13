@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for rm_guard. Run: python3 hooks/test_guard.py"""
+"""Tests for guard.py. Run: python3 hooks/test_guard.py"""
 import json, os, subprocess, sys, unittest
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guard.py")
@@ -37,6 +37,63 @@ class RmGuard(unittest.TestCase):
 
     def test_rm_r_without_force_is_silent(self):
         self.assertIsNone(decide("rm -r /home/user/proj/stale"))
+
+
+TRAILER = "Co-Authored-By: Claude <noreply@anthropic.com>"
+
+
+def repo(tmp, remote, message="fix thing"):
+    """A repo on a feature branch with one local commit and one remote."""
+    run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "commit.gpgsign=false", "-c", "user.name=t",
+                                     "-c", "user.email=t@example.com", *a],
+                                    check=True, capture_output=True)
+    run("init", "-q", "-b", "fix-branch")
+    run("remote", "add", "upstream", remote)
+    run("commit", "-q", "--allow-empty", "-m", message)
+    return tmp
+
+
+class ClaGuard(unittest.TestCase):
+    K8S = "https://github.com/kubernetes-sigs/kubespray.git"
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+
+    def test_commit_with_trailer_in_k8s_repo_denied(self):
+        d = repo(self.tmp, self.K8S)
+        self.assertEqual(decide(f'git commit -m "fix\n\n{TRAILER}"', d), "deny")
+
+    def test_heredoc_commit_message_denied(self):
+        d = repo(self.tmp, "git@github.com:kubernetes/website.git")
+        cmd = f"git commit -m \"$(cat <<'EOF'\nfix\n\n{TRAILER}\nEOF\n)\""
+        self.assertEqual(decide(cmd, d), "deny")
+
+    def test_commit_with_trailer_elsewhere_is_silent(self):
+        d = repo(self.tmp, "https://github.com/gengwg/skills.git")
+        self.assertIsNone(decide(f'git commit -m "fix\n\n{TRAILER}"', d))
+
+    def test_commit_without_trailer_is_silent(self):
+        d = repo(self.tmp, self.K8S)
+        self.assertIsNone(decide('git commit -m "fix\n\nSigned-off-by: Dev <dev@example.com>"', d))
+
+    def test_amend_that_strips_trailer_is_silent(self):
+        d = repo(self.tmp, self.K8S)
+        cmd = "git commit --amend -m \"$(git log -1 --format=%B | grep -v '^Co-Authored-By:')\""
+        self.assertIsNone(decide(cmd, d))
+
+    def test_push_of_unpushed_trailer_commit_denied(self):
+        d = repo(self.tmp, self.K8S, f"fix\n\n{TRAILER}")
+        self.assertEqual(decide("git push origin fix-branch", d), "deny")
+
+    @unittest.skipIf(subprocess.run(["gh", "auth", "status"], capture_output=True).returncode, "gh not authenticated")
+    def test_push_from_fork_only_clone_denied(self):
+        d = repo(self.tmp, "https://github.com/gengwg/kubespray.git", f"fix\n\n{TRAILER}")
+        self.assertEqual(decide("git push origin fix-branch", d), "deny")
+
+    def test_push_of_clean_commit_is_silent(self):
+        d = repo(self.tmp, self.K8S, "fix\n\nSigned-off-by: Dev <dev@example.com>")
+        self.assertIsNone(decide("git push origin fix-branch", d))
 
 
 if __name__ == "__main__":

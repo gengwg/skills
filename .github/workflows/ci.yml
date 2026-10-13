@@ -15,4 +15,6 @@ jobs:
           python-version: "3.14"
       - run: python3 .github/check.py
       - run: python3 hooks/test_guard.py
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: shellcheck hooks/*.sh

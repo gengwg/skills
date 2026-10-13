@@ -22,6 +22,10 @@ npx skills add gengwg/skills -s medium-post -g
 | [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) | oncall-sre |
 | [dell-dcgmprofrunner-gpu-operator](dell-dcgmprofrunner-gpu-operator/SKILL.md) | Run Dell's dcgmprofrunner thermal test in the GPU Operator DCGM pod, no reinstall, and read the result | oncall-sre |
 | [kubespray-node-rejoin](kubespray-node-rejoin/SKILL.md) | Rejoin a node to a kubespray cluster: scoped runs, recap reading, post-verification | oncall-sre |
+| [tofu-gitlab-state-local-apply](tofu-gitlab-state-local-apply/SKILL.md) | Local tofu plan/apply against GitLab-managed state without hitting the wrong state or a fake apply | oncall-sre |
+| [dcgm-telemetry-pitfalls](dcgm-telemetry-pitfalls/SKILL.md) | DCGM series that read as fault or health and are neither: event-created XID, latched field 170, exporter-dropped NVLink, aggregated PROF, DCGM 3 vs 4 names | oncall-sre |
+| [gpu-operator-driver-uncordon](gpu-operator-driver-uncordon/SKILL.md) | GPU Operator driver pod uncordons a node cordoned for a bad GPU after every reboot: proof, workarounds, fleet sweep | oncall-sre |
+| [infiniband-port-alerting-pitfalls](infiniband-port-alerting-pitfalls/SKILL.md) | IB port state that pages on nothing or hides a dead rail: HGX bridge ports, Disabled ports, exclusions outside the lookback window | oncall-sre |
 | [medium-post](medium-post/SKILL.md) | Publishing markdown to Medium via browser automation (no API needed) | |
 | [wifi-powersave-fix](wifi-powersave-fix/SKILL.md) | Fix laggy WiFi on Linux by disabling NetworkManager power saving | |
 | [dotfiles-multi-machine-sync](dotfiles-multi-machine-sync/SKILL.md) | Dotfiles repo with an idempotent symlink installer, synced across machines | |
@@ -33,13 +37,17 @@ npx skills add gengwg/skills -s medium-post -g
 | [pto-planner](pto-planner/SKILL.md) | Pick low-impact PTO days from the calendar, then block, file, announce, and remind | |
 | [video-transcribe-and-caption](video-transcribe-and-caption/SKILL.md) | Transcribe an uncaptioned video with local Whisper, fix misheard lines, burn in captions | |
 | [apt-repo-key-rotation](apt-repo-key-rotation/SKILL.md) | Fix NO_PUBKEY on one APT repo after the vendor rotates its signing key | |
+| [cpu-governor-persist](cpu-governor-persist/SKILL.md) | Set the CPU frequency governor so it survives reboot: systemd unit traps, fail-closed playbook, reboot acceptance | |
+| [glab-api-pitfalls](glab-api-pitfalls/SKILL.md) | glab writes that exit 0 and do the wrong thing: literal @file, wiped description, wrong-repo target, cross-project refs | |
+| [agent-shell-pitfalls](agent-shell-pitfalls/SKILL.md) | Shell gates that gate nothing: `set -e` inside `&&`/`if`, exit codes lost in piped groups, `pkill -f` matching its own shell | |
 
 ## Claude Code plugin
 
 The on-call SRE set (Grafana alerting/OnCall, GPU nodes, kubespray) is also
 packaged as the `oncall-sre` plugin, with guardrail hooks: kubectl writes need
 an explicit `--context`, no `git push --force` or commits on protected
-branches, submodule pins are not bumped by accident, merges and `rm -rf` ask
+branches, submodule pins are not bumped by accident, no `Co-Authored-By`
+trailers in Kubernetes-org repos (EasyCLA rejects them), merges and `rm -rf` ask
 first, and a session-start line shows the current kube context and branch.
 
 It also ships `/oncall-sre:explain-codebase [path]`, which walks a repo (or one subsystem)
