@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests for guard.py. Run: python3 hooks/test_guard.py"""
-import json, os, subprocess, sys, unittest
+import json, os, subprocess, sys, unittest, unittest.mock
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guard.py")
 
@@ -86,10 +86,16 @@ class ClaGuard(unittest.TestCase):
         d = repo(self.tmp, self.K8S, f"fix\n\n{TRAILER}")
         self.assertEqual(decide("git push origin fix-branch", d), "deny")
 
-    @unittest.skipIf(subprocess.run(["gh", "auth", "status"], capture_output=True).returncode, "gh not authenticated")
     def test_push_from_fork_only_clone_denied(self):
-        d = repo(self.tmp, "https://github.com/gengwg/kubespray.git", f"fix\n\n{TRAILER}")
-        self.assertEqual(decide("git push origin fix-branch", d), "deny")
+        # Real forks get deleted; a stub gh answers the parent lookup without network or auth.
+        bindir = os.path.join(self.tmp, "bin")
+        os.mkdir(bindir)
+        with open(os.path.join(bindir, "gh"), "w") as f:
+            f.write("#!/bin/sh\necho kubernetes-sigs/kubespray\n")
+        os.chmod(os.path.join(bindir, "gh"), 0o755)
+        d = repo(self.tmp, "https://github.com/someone/kubespray.git", f"fix\n\n{TRAILER}")
+        with unittest.mock.patch.dict(os.environ, {"PATH": bindir + os.pathsep + os.environ["PATH"]}):
+            self.assertEqual(decide("git push origin fix-branch", d), "deny")
 
     def test_push_of_clean_commit_is_silent(self):
         d = repo(self.tmp, self.K8S, "fix\n\nSigned-off-by: Dev <dev@example.com>")
