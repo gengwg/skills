@@ -4,7 +4,7 @@
 Denies: kubectl writes without --context, switching the global kube context, git push --force,
 --no-verify, commits/pushes on protected branches, submodule pin bumps, Co-Authored-By
 trailers in Kubernetes-org repos (EasyCLA).
-Asks: MR/PR merges, rm -rf outside scratch dirs.
+Asks: GitLab MR merges, rm -rf outside scratch dirs.
 """
 import json, os, re, subprocess, sys
 
@@ -228,7 +228,8 @@ def bash(cmd, cwd):
         cla_guard(stmt, d, raw)
         rm_guard(stmt, d)
 
-        if re.search(r"glab\s+mr\s+merge\b|\bgh\s+pr\s+merge\b", stmt) or re.search(r"glab\s+api\b" + SEG + r"merge_requests/\d+/merge\b", stmt):
+        # GitLab only: team repos. GitHub PRs here are personal repos, merged on request.
+        if re.search(r"glab\s+mr\s+merge\b", stmt) or re.search(r"glab\s+api\b" + SEG + r"merge_requests/\d+/merge\b", stmt):
             out("ask", "Merging is a human decision. Confirm this merge.")
 
         if re.search(r"glab\s+api\b" + SEG + r"(?:--method|-X)\s*(?:PUT|POST)\b", stmt) and "--input" in stmt \

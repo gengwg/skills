@@ -15,6 +15,14 @@ def decide(command, cwd="/home/user/proj"):
     return json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"]
 
 
+class MergeGuard(unittest.TestCase):
+    def test_gitlab_mr_merge_asks(self):
+        self.assertEqual(decide("glab mr merge 12 --yes"), "ask")
+
+    def test_github_pr_merge_is_silent(self):
+        self.assertIsNone(decide("gh pr merge 41 --squash --delete-branch"))
+
+
 class RmGuard(unittest.TestCase):
     def test_rf_outside_scratch_asks(self):
         self.assertEqual(decide("rm -rf /home/user/proj/build"), "ask")
