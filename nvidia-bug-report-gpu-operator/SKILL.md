@@ -81,9 +81,17 @@ gunzip -k nvidia-bug-report.log.gz     # extract a copy, keep the .gz
 
 Skim it before uploading anywhere — confirm it actually captured the GPU sections, and know what it says before the vendor does.
 
+**Repackage as `.zip` before sharing in Slack.** A `.gz` attachment is a dead end for the vendor's Slack-to-ticket flow; ship `<node>-nvidia-bug-report-<date>.zip` containing the `.log`. The uncompressed log can run to ~1 GB, so delete it after zipping:
+
+```bash
+gunzip -k nvidia-bug-report.log.gz
+zip -q <node>-nvidia-bug-report-<date>.zip nvidia-bug-report.log && rm nvidia-bug-report.log
+```
+
 ## Common mistakes
 
 - `apt install nvidia-utils` to "fix" the missing nvidia-smi — now two driver stacks fight.
 - Running `nvidia-bug-report.sh` bare and shipping a report whose SMI sections silently failed — always read the skipped-sections summary.
 - Trusting a monitoring system's GPU index without confirming against `pci.bus_id`.
 - Concluding the driver is broken because `dpkg` shows no NVIDIA packages.
+- Attaching the raw `.log.gz` to Slack — repackage as `.zip`.
