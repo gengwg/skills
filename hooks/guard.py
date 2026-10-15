@@ -187,10 +187,11 @@ def rm_guard(stmt, d):
             t = t.strip("\"'")
             if "$" in t:
                 out("ask", f"rm -rf on a variable path ({t}); confirm.")
-            p = os.path.normpath(os.path.join(d, t))
-            # Anything inside a project's tmp/ is scratch; tmp itself stays guarded
-            # (some repos track it), and so does the system /tmp.
-            in_tmp = "tmp" in p.split(os.sep)[1:-1] and not p.startswith("/tmp/")
+            p = os.path.normpath(os.path.join(d, os.path.expanduser(t)))
+            # Anything inside a tmp/ under $HOME is project scratch; tmp itself stays
+            # guarded (some repos track it), and so do /tmp, /var/tmp and system paths.
+            home = os.path.expanduser("~") + os.sep
+            in_tmp = p.startswith(home) and "tmp" in p.split(os.sep)[1:-1]
             if not (p.startswith(SAFE_RM_PREFIXES) or "/worktrees/" in p or in_tmp):
                 out("ask", f"rm -rf outside scratchpad/worktrees: {p}")
 
