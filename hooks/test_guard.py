@@ -25,6 +25,15 @@ class RmGuard(unittest.TestCase):
     def test_rf_in_worktree_is_silent(self):
         self.assertIsNone(decide("rm -rf /home/user/worktrees/feat"))
 
+    def test_rf_inside_cwd_tmp_is_silent(self):
+        self.assertIsNone(decide("rm -rf tmp/*"))
+        self.assertIsNone(decide("rm -rf tmp/build /home/user/proj/tmp/x"))
+
+    def test_rf_cwd_tmp_itself_or_escape_asks(self):
+        self.assertEqual(decide("rm -rf tmp"), "ask")
+        self.assertEqual(decide("rm -rf tmp/../src"), "ask")
+        self.assertEqual(decide("rm -rf /home/user/other/tmp/x"), "ask")
+
     def test_rf_variable_path_asks(self):
         self.assertEqual(decide("rm -rf $BUILD_DIR"), "ask")
 
