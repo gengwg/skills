@@ -67,6 +67,31 @@ class RmGuard(unittest.TestCase):
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd, cwd=cwd), "ask")
 
+    def test_rf_tmp_allow_needs_plain_tokens_and_real_path(self):
+        import tempfile
+        home = tempfile.mkdtemp()
+        try:
+            os.makedirs(os.path.join(home, "proj", "tmp"))
+            # tmp/link points back at $HOME: the literal path has a tmp segment,
+            # the real path does not.
+            os.symlink(home, os.path.join(home, "proj", "tmp", "link"))
+            env_home = {"HOME": home}
+            def dec(cmd):
+                p = subprocess.run([sys.executable, GUARD], input=json.dumps(
+                    {"tool_name": "Bash", "tool_input": {"command": cmd},
+                     "cwd": os.path.join(home, "proj")}),
+                    capture_output=True, text=True, timeout=15, env={**os.environ, **env_home})
+                return json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"] if p.stdout.strip() else None
+            self.assertIsNone(dec("rm -rf tmp/build"))
+            self.assertIsNone(dec("rm -rf tmp/*"))
+            self.assertEqual(dec("rm -rf tmp/link"), "ask")
+            self.assertEqual(dec("rm -rf tmp/link/x"), "ask")
+            self.assertEqual(dec("rm -rf tmp/[ab]"), "ask")
+            self.assertEqual(dec("rm -rf tmp/a*/../.."), "ask")
+        finally:
+            import shutil
+            shutil.rmtree(home)
+
     def test_rf_variable_path_asks(self):
         self.assertEqual(decide("rm -rf $BUILD_DIR"), "ask")
 

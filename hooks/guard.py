@@ -192,10 +192,15 @@ def rm_guard(stmt, d):
             if re.search(r"[{}()<>`]", t) or ("~" in t and t != "~" and not t.startswith("~/")):
                 out("ask", f"rm -rf on a path the shell rewrites ({t}); confirm.")
             p = os.path.normpath(os.path.join(d, os.path.expanduser(t)))
-            # Anything inside a tmp/ under $HOME is project scratch; tmp itself stays
-            # guarded (some repos track it), and so do /tmp, /var/tmp and system paths.
-            home = os.path.expanduser("~") + os.sep
-            in_tmp = p.startswith(home) and "tmp" in p.split(os.sep)[1:-1]
+            # Inside a tmp/ under $HOME is project scratch, but only for plain path
+            # tokens (anything else may be rewritten by the shell), judged on the real
+            # path so a symlinked or decoy tmp segment cannot widen it. tmp itself,
+            # /tmp, /var/tmp and paths outside $HOME stay guarded.
+            home = os.path.realpath(os.path.expanduser("~")) + os.sep
+            real = os.path.realpath(p)
+            in_tmp = (re.fullmatch(r"(~/)?[\w.@+/-]*\*?", t) is not None
+                      and real.startswith(home)
+                      and "tmp" in real[len(home):].split(os.sep)[:-1])
             if not (p.startswith(SAFE_RM_PREFIXES) or "/worktrees/" in p or in_tmp):
                 out("ask", f"rm -rf outside scratchpad/worktrees: {p}")
 
