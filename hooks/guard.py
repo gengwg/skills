@@ -187,6 +187,10 @@ def rm_guard(stmt, d):
             t = t.strip("\"'")
             if "$" in t:
                 out("ask", f"rm -rf on a variable path ({t}); confirm.")
+            # The shell expands braces, substitutions, subshells and ~-/~+ into paths
+            # this check never sees (a decoy tmp/ in {~,a/tmp/b} would pass), so ask.
+            if re.search(r"[{}()<>`]", t) or ("~" in t and t != "~" and not t.startswith("~/")):
+                out("ask", f"rm -rf on a path the shell rewrites ({t}); confirm.")
             p = os.path.normpath(os.path.join(d, os.path.expanduser(t)))
             # Anything inside a tmp/ under $HOME is project scratch; tmp itself stays
             # guarded (some repos track it), and so do /tmp, /var/tmp and system paths.

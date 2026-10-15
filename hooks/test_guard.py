@@ -51,6 +51,22 @@ class RmGuard(unittest.TestCase):
         self.assertEqual(decide("rm -rf ~", cwd="/home/user/proj/tmp/a"), "ask")
         self.assertEqual(decide("rm -rf ~/.ssh", cwd="/home/user/proj/tmp/a"), "ask")
 
+    def test_rf_shell_rewritten_paths_ask(self):
+        tmp_cwd = "/home/user/proj/tmp/a"
+        for cmd, cwd in [
+            ("rm -rf {~,a/tmp/b}", "/home/user/proj"),
+            ("rm -rf {/home,a/tmp/b}", "/home/user/proj"),
+            ("rm -rf tmp/{x,../../..}", "/home/user/proj"),
+            ("rm -rf ~/p/tmp/q/`:`/../../..", "/home/user/proj"),
+            ("(rm -rf ~)", tmp_cwd),
+            ("echo `rm -rf ~`", tmp_cwd),
+            ("rm -rf ~>/dev/null", tmp_cwd),
+            ("rm -rf ~-", tmp_cwd),
+            ("rm -rf ~+/..", tmp_cwd),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, cwd=cwd), "ask")
+
     def test_rf_variable_path_asks(self):
         self.assertEqual(decide("rm -rf $BUILD_DIR"), "ask")
 
