@@ -9,7 +9,7 @@ def decide(command, cwd="/home/user/proj"):
     """Run the hook and return its permissionDecision, or None if it stayed silent."""
     p = subprocess.run([sys.executable, GUARD], input=json.dumps(
         {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": cwd}),
-        capture_output=True, text=True, timeout=15)
+        capture_output=True, text=True, timeout=15, env={**os.environ, "HOME": "/home/user"})
     if not p.stdout.strip():
         return None
     return json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"]
@@ -33,14 +33,23 @@ class RmGuard(unittest.TestCase):
     def test_rf_in_worktree_is_silent(self):
         self.assertIsNone(decide("rm -rf /home/user/worktrees/feat"))
 
-    def test_rf_inside_cwd_tmp_is_silent(self):
+    def test_rf_inside_any_project_tmp_is_silent(self):
         self.assertIsNone(decide("rm -rf tmp/*"))
         self.assertIsNone(decide("rm -rf tmp/build /home/user/proj/tmp/x"))
+        self.assertIsNone(decide("rm -rf /home/user/other/tmp/x"))
 
-    def test_rf_cwd_tmp_itself_or_escape_asks(self):
+    def test_rf_tmp_itself_escape_or_system_tmp_asks(self):
         self.assertEqual(decide("rm -rf tmp"), "ask")
+        self.assertEqual(decide("rm -rf /home/user/other/tmp"), "ask")
         self.assertEqual(decide("rm -rf tmp/../src"), "ask")
-        self.assertEqual(decide("rm -rf /home/user/other/tmp/x"), "ask")
+        self.assertEqual(decide("rm -rf /tmp/build"), "ask")
+        self.assertEqual(decide("rm -rf //tmp/build"), "ask")
+        self.assertEqual(decide("rm -rf /var/tmp/build"), "ask")
+        self.assertEqual(decide("rm -rf /etc/x/tmp/y"), "ask")
+
+    def test_rf_home_from_a_tmp_cwd_asks(self):
+        self.assertEqual(decide("rm -rf ~", cwd="/home/user/proj/tmp/a"), "ask")
+        self.assertEqual(decide("rm -rf ~/.ssh", cwd="/home/user/proj/tmp/a"), "ask")
 
     def test_rf_variable_path_asks(self):
         self.assertEqual(decide("rm -rf $BUILD_DIR"), "ask")
