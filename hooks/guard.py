@@ -194,13 +194,19 @@ def rm_guard(stmt, d):
             p = os.path.normpath(os.path.join(d, os.path.expanduser(t)))
             # Inside a tmp/ under $HOME is project scratch, but only for plain path
             # tokens (anything else may be rewritten by the shell), judged on the real
-            # path so a symlinked or decoy tmp segment cannot widen it. tmp itself,
-            # /tmp, /var/tmp and paths outside $HOME stay guarded.
-            home = os.path.realpath(os.path.expanduser("~")) + os.sep
-            real = os.path.realpath(p)
-            in_tmp = (re.fullmatch(r"(~/)?[\w.@+/-]*\*?", t) is not None
-                      and real.startswith(home)
-                      and "tmp" in real[len(home):].split(os.sep)[:-1])
+            # path so a pre-existing symlinked or decoy tmp segment cannot widen it
+            # (resolve the full path: a trailing symlink with "/" deletes its target's
+            # contents). tmp itself, /tmp, /var/tmp and paths outside $HOME stay guarded.
+            # Resolve only plain tokens under $HOME: realpath can stall on a hung mount
+            # or raise on odd input, and either would fail the hook open.
+            in_tmp = False
+            if re.fullmatch(r"(~/)?[\w.@+/-]*\*?", t) and p.startswith(os.path.expanduser("~") + os.sep):
+                try:
+                    home = os.path.realpath(os.path.expanduser("~")) + os.sep
+                    real = os.path.realpath(p)
+                    in_tmp = real.startswith(home) and "tmp" in real[len(home):].split(os.sep)[:-1]
+                except (OSError, ValueError):
+                    in_tmp = False
             if not (p.startswith(SAFE_RM_PREFIXES) or "/worktrees/" in p or in_tmp):
                 out("ask", f"rm -rf outside scratchpad/worktrees: {p}")
 
