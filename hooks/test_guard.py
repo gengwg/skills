@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Tests for guard.py. Run: python3 hooks/test_guard.py"""
-import json, os, subprocess, sys, unittest, unittest.mock
+import json, os, shutil, subprocess, sys, tempfile, unittest, unittest.mock
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guard.py")
 
 
-def decide(command, cwd="/home/user/proj"):
+def decide(command, cwd="/home/user/proj", home="/home/user"):
     """Run the hook and return its permissionDecision, or None if it stayed silent."""
     p = subprocess.run([sys.executable, GUARD], input=json.dumps(
         {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": cwd}),
-        capture_output=True, text=True, timeout=15, env={**os.environ, "HOME": "/home/user"})
+        capture_output=True, text=True, timeout=15, env={**os.environ, "HOME": home})
     if not p.stdout.strip():
         return None
     return json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"]
@@ -50,6 +50,45 @@ class RmGuard(unittest.TestCase):
     def test_rf_home_from_a_tmp_cwd_asks(self):
         self.assertEqual(decide("rm -rf ~", cwd="/home/user/proj/tmp/a"), "ask")
         self.assertEqual(decide("rm -rf ~/.ssh", cwd="/home/user/proj/tmp/a"), "ask")
+
+    def test_rf_shell_rewritten_paths_ask(self):
+        tmp_cwd = "/home/user/proj/tmp/a"
+        for cmd, cwd in [
+            ("rm -rf {~,a/tmp/b}", "/home/user/proj"),
+            ("rm -rf {/home,a/tmp/b}", "/home/user/proj"),
+            ("rm -rf tmp/{x,../../..}", "/home/user/proj"),
+            ("rm -rf ~/p/tmp/q/`:`/../../..", "/home/user/proj"),
+            ("(rm -rf ~)", tmp_cwd),
+            ("echo `rm -rf ~`", tmp_cwd),
+            ("rm -rf ~>/dev/null", tmp_cwd),
+            ("rm -rf ~-", tmp_cwd),
+            ("rm -rf ~+/..", tmp_cwd),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, cwd=cwd), "ask")
+
+    def test_rf_tmp_allow_needs_plain_tokens_and_real_path(self):
+        # /var/tmp, not $TMPDIR: a scratchpad or worktrees TMPDIR would hit the
+        # other allow branches and mask the asks below.
+        home = tempfile.mkdtemp(dir="/var/tmp")
+        try:
+            proj = os.path.join(home, "proj")
+            os.makedirs(os.path.join(proj, "tmp"))
+            # tmp/link points back at $HOME: the literal path has a tmp segment,
+            # the real path does not.
+            os.symlink(home, os.path.join(proj, "tmp", "link"))
+            dec = lambda cmd, cwd=proj: decide(cmd, cwd=cwd, home=home)
+            self.assertIsNone(dec("rm -rf tmp/build"))
+            self.assertIsNone(dec("rm -rf tmp/*"))
+            self.assertIsNone(dec("rm -rf *", cwd=os.path.join(proj, "tmp")))
+            self.assertIsNone(dec("rm -rf ~/proj/tmp/x"))
+            self.assertEqual(dec("rm -rf *"), "ask")
+            self.assertEqual(dec("rm -rf tmp/link"), "ask")
+            self.assertEqual(dec("rm -rf tmp/link/x"), "ask")
+            self.assertEqual(dec("rm -rf tmp/[ab]"), "ask")
+            self.assertEqual(dec("rm -rf tmp/a*/../.."), "ask")
+        finally:
+            shutil.rmtree(home)
 
     def test_rf_variable_path_asks(self):
         self.assertEqual(decide("rm -rf $BUILD_DIR"), "ask")

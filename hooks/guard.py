@@ -187,11 +187,26 @@ def rm_guard(stmt, d):
             t = t.strip("\"'")
             if "$" in t:
                 out("ask", f"rm -rf on a variable path ({t}); confirm.")
+            # The shell expands braces, substitutions, subshells and ~-/~+ into paths
+            # this check never sees (a decoy tmp/ in {~,a/tmp/b} would pass), so ask.
+            if re.search(r"[{}()<>`]", t) or ("~" in t and t != "~" and not t.startswith("~/")):
+                out("ask", f"rm -rf on a path the shell rewrites ({t}); confirm.")
             p = os.path.normpath(os.path.join(d, os.path.expanduser(t)))
-            # Anything inside a tmp/ under $HOME is project scratch; tmp itself stays
-            # guarded (some repos track it), and so do /tmp, /var/tmp and system paths.
-            home = os.path.expanduser("~") + os.sep
-            in_tmp = p.startswith(home) and "tmp" in p.split(os.sep)[1:-1]
+            # Inside a tmp/ under $HOME is project scratch, but only for plain path
+            # tokens (anything else may be rewritten by the shell), judged on the real
+            # path so a pre-existing symlinked or decoy tmp segment cannot widen it
+            # (resolve the full path: a trailing symlink with "/" deletes its target's
+            # contents). tmp itself, /tmp, /var/tmp and paths outside $HOME stay guarded.
+            # Resolve only plain tokens under $HOME: realpath can stall on a hung mount
+            # or raise on odd input, and either would fail the hook open.
+            in_tmp = False
+            if re.fullmatch(r"(~/)?[\w.@+/-]*\*?", t) and p.startswith(os.path.expanduser("~") + os.sep):
+                try:
+                    home = os.path.realpath(os.path.expanduser("~")) + os.sep
+                    real = os.path.realpath(p)
+                    in_tmp = real.startswith(home) and "tmp" in real[len(home):].split(os.sep)[:-1]
+                except (OSError, ValueError):
+                    in_tmp = False
             if not (p.startswith(SAFE_RM_PREFIXES) or "/worktrees/" in p or in_tmp):
                 out("ask", f"rm -rf outside scratchpad/worktrees: {p}")
 
