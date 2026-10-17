@@ -21,6 +21,12 @@
         "hooks": [
           { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/post-edit.sh", "timeout": 120 }
         ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/mcp_classify.py", "timeout": 5 }
+        ]
       }
     ],
     "Stop": [
