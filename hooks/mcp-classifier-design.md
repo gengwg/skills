@@ -107,8 +107,11 @@ summaries, never message bodies or credentials.
    so any Slack connector is covered. Tested with hook JSON: old and current
    names were denied outside the allowlist; the allowlisted channel, drafts and
    reads were unaffected.
-2. **Log only for a week.** `PostToolUse` records the class it would have
-   assigned. Review the ask and unknown counts.
+2. **Log only for a week.** Started 2026-10-17 (1.7.6): `hooks/mcp_classify.py`
+   appends the class each call would get to `~/.claude/mcp-classify.jsonl`
+   (tool name and class only, never the input). It has the verb rules and
+   multiplexer list, but no override table or allowlist yet. Review the ask and
+   unknown counts.
 3. **Enforce** irrecoverable and unknown as ask.
 4. **Turn on the ledger** for compensatable calls, and print it at session end.
 5. **Refactor:** fold the Slack rule into the override table and delete the
