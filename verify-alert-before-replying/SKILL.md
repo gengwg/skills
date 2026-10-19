@@ -17,7 +17,7 @@ An alert message is a claim, not a fact. It reflects one query's result at one m
    - fired-then and true-now → **ongoing, true positive**
    - fired-then but false-now → **was real, since recovered (stale alert / already resolved)**
    - can't reproduce at fire-time → **suspect the rule** (wrong labels, scrape gap, threshold artifact)
-4. **Cross-check with an independent source.** The metric and the alert share a pipeline; confirm through a different one — `kubectl get nodes` / service health endpoint / logs. Metric says NotReady but kubectl says Ready ⇒ telemetry problem, not an outage.
+4. **Cross-check with an independent source.** The metric and the alert share a pipeline; confirm through a different one — `kubectl get nodes` / service health endpoint / logs. Metric says NotReady but kubectl says Ready ⇒ telemetry problem, not an outage. For a node, read its labels and annotations for who cordoned it and why before reading pod states, and compare the cordon time with the fault time: cordoned before the fault means planned work.
 5. **Classify explicitly** in the reply — four verdicts:
    - **true positive** (ongoing)
    - **true-but-recovered**
@@ -40,3 +40,5 @@ Include the query or command used, so the reader can re-check.
 - Trusting the same telemetry pipeline that produced the alert as its own confirmation.
 - Saying "false positive" without naming the mechanism — if you can't say *why* it misfired, you haven't verified, you've guessed.
 - Posting the reply directly instead of drafting for the human.
+- Reporting a clean fleet sweep without running the same probe on a host with a known fault. A timeout or truncated output reads as all-clear.
+- Calling a node finding new after an empty issue-tracker search. Search the chat and vendor channels where node work actually happens first.

@@ -69,7 +69,22 @@ All links Up and no NVSwitch faults means the fix is on the exporter, and the
 alert is a monitoring gap. A Grafana "resolved" with state reason `Updated`
 is a rule edit, not recovery; the alert comes back after its pending period.
 
-## 4. Profiling metrics with every label dropped still average
+The reverse also happens: a GPU with every link down can keep exporting
+NVLink counters, so a rule keyed on series absence never fires. And a rule
+that excludes cordoned nodes goes Pending and clears on a cluster where
+another system auto-cordons within minutes of the fault. For links that are
+really down, the kernel log is the reliable signal: `knvlinkUpdatePostRxDetectLinkMask_IMPL:
+Failed to update Rx Detect Link mask` repeating from the minute of the fault.
+
+## 4. "GPU telemetry absent" with a deaf hostengine
+
+A DCGM hostengine that starts while the driver is restarting gets no NVML:
+the container toolkit's runtime wrapper execs plain runc when the `nvidia`
+module is not yet loaded. Nothing restarts it, and dcgm-exporter serves an
+empty `/metrics` body while its pod reads Running. Restart the hostengine
+pod, then the exporter, in that order. Upstream: NVIDIA/gpu-operator #2854.
+
+## 5. Profiling metrics with every label dropped still average
 
 An aggregation layer (Grafana Adaptive Metrics or similar) can drop every
 label from `DCGM_FI_PROF_*` and keep only `count` and `sum`. `avg()` and
@@ -85,7 +100,7 @@ exemption, not a different query. On one fleet over a week,
 `GR_ENGINE_ACTIVE` tracked `DCGM_FI_DEV_GPU_UTIL / 100` within 0.3%, so the
 NVML utilisation figure can stand in at fleet scale; spot-check yours first.
 
-## 5. Field names differ between DCGM 3 and DCGM 4 exporters
+## 6. Field names differ between DCGM 3 and DCGM 4 exporters
 
 Rules written against one name set are blind on clusters running the other.
 Before declaring a gap or asking a cluster owner for a field, read the rule
@@ -107,6 +122,8 @@ Write rules as `metric_a or metric_b` and verify with
   on-box check in 3.
 - Treating field 170 = 3 as current health rather than init history.
 - Filing a datacenter ticket on an absence-based rule alone.
+- Trusting an absence-based NVLink rule to catch dead links; check the kernel log.
+- Restarting only the exporter when its `/metrics` is empty; the hostengine goes first.
 - Giving up on `DCGM_FI_PROF_*` because `avg()` returns nothing.
 - Declaring a cluster blind without reading the rule; thermal and power rules
   often already `or` both field names.
