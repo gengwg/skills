@@ -14,6 +14,22 @@ On GPU Operator–managed nodes the NVIDIA driver runs inside a container and is
 - Do **not** `apt install nvidia-utils-*` — it installs a second, conflicting driver stack on top of the Operator-managed one
 - The kernel modules (`nvidia`, `nvidia_uvm`, `nvidia_modeset`) ARE loaded into the host kernel and show up in `lsmod`
 
+## Precheck: do not run nvidia-smi on a latched NVLink node
+
+On B200/B300 nodes with long uptime (observed around 50 to 66 days), the kernel log can fill with:
+
+```
+knvlinkUpdatePostRxDetectLinkMask_IMPL: Failed to update Rx Detect Link mask
+```
+
+On such a node any `nvidia-smi` call, even `--query-gpu`, goes into uninterruptible D state, cannot be killed, and takes dcgm-exporter down with it. The bug report collector calls `nvidia-smi`, so it hangs the same way. Check first:
+
+```bash
+sudo dmesg | grep -c 'Rx Detect Link mask'; uptime
+```
+
+If it matches, run neither. Read the VBIOS from `/proc/driver/nvidia/gpus/*/information` instead. The remedy is a reboot now and a GPU tray firmware update from the vendor, not a hardware RMA.
+
 ## Locate the tools
 
 ```bash
@@ -81,11 +97,10 @@ gunzip -k nvidia-bug-report.log.gz     # extract a copy, keep the .gz
 
 Skim it before uploading anywhere — confirm it actually captured the GPU sections, and know what it says before the vendor does.
 
-**Repackage as `.zip` before sharing in Slack.** A `.gz` attachment is a dead end for the vendor's Slack-to-ticket flow; ship `<node>-nvidia-bug-report-<date>.zip` containing the `.log`. The uncompressed log can run to ~1 GB, so delete it after zipping:
+**Do not attach the `.gz` in Slack Connect.** It is rejected ("Files of this type can't be shared in conversations using Slack Connect"). What has worked is the uncompressed log renamed to `.txt`, or the vendor's ticket portal. A `.zip` is untested there; use it only once you have seen it accepted. The uncompressed log can run to hundreds of MB, so delete it after uploading:
 
 ```bash
-gunzip -k nvidia-bug-report.log.gz
-zip -q <node>-nvidia-bug-report-<date>.zip nvidia-bug-report.log && rm nvidia-bug-report.log
+gunzip -c nvidia-bug-report.log.gz > <node>-nvidia-bug-report-<date>.txt
 ```
 
 ## Common mistakes
@@ -94,4 +109,5 @@ zip -q <node>-nvidia-bug-report-<date>.zip nvidia-bug-report.log && rm nvidia-bu
 - Running `nvidia-bug-report.sh` bare and shipping a report whose SMI sections silently failed — always read the skipped-sections summary.
 - Trusting a monitoring system's GPU index without confirming against `pci.bus_id`.
 - Concluding the driver is broken because `dpkg` shows no NVIDIA packages.
-- Attaching the raw `.log.gz` to Slack — repackage as `.zip`.
+- Attaching the raw `.log.gz` to a Slack Connect channel. Send a `.txt` or use the vendor portal.
+- Running `nvidia-smi` on a node logging the Rx Detect error. It hangs for good.
