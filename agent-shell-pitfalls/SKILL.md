@@ -1,6 +1,6 @@
 ---
 name: agent-shell-pitfalls
-description: Use when a shell script run through an AI agent's Bash tool or a CI job must stop on a failing check before a commit, push, or deploy; when capturing an exit code through a pipe or tee; when a gate is a python heredoc; or when stopping a background process by name with pkill -f or pgrep -f.
+description: Use when a shell script run through an AI agent's Bash tool or a CI job must stop on a failing check before a commit, push, or deploy; when capturing an exit code through a pipe or tee; when a gate is a python heredoc; when stopping a background process by name with pkill -f or pgrep -f; or when the agent's shell is zsh and bash-style commands fail with "no matches found", "read-only variable: status", "parse error near ()", "= not found", or a pathspec holding several space-separated names.
 ---
 
 # Agent shell pitfalls
@@ -85,6 +85,26 @@ outer shell never sees it. Matching the args guards against a reused PID;
 `ps -p` alone succeeds for whatever process now holds it.
 If the PID is lost, list candidates with `pgrep -a -x node`, read each
 `args`, and kill one exact PID.
+
+## 4. The Bash tool may be running zsh
+
+An agent's "Bash" tool runs the user's login shell, often zsh with
+oh-my-zsh. Probe once: `echo ${ZSH_VERSION:-bash}`. Under zsh, ordinary
+bash fails like this:
+
+| Bash habit | zsh result | Fix |
+|---|---|---|
+| `F="a b c"; git add $F` | One argument, `pathspec 'a b c' did not match` | `F=(a b c); git add "${F[@]}"` |
+| `echo ====` | `=== not found`, and the rest of the call is skipped (a leading `=` means command path expansion) | Quote it: `echo '===='` |
+| `ls *.bak 2>/dev/null` with no match | `no matches found`; the command never runs and `2>/dev/null` doesn't silence it | `find . -maxdepth 1 -name '*.bak'` |
+| `status=$?` | `read-only variable: status` aborts the call | Use another name: `rc=$?` |
+| `g() { ...; }` | `parse error near ()` when an alias `g` exists; `unalias g` in the same call doesn't help, since aliases expand at parse time | `function g { ...; }`, or a longer name |
+| `rm file` | Aliased to `rm -i`, prompts with no terminal | `command rm -f file` |
+
+For anything longer than a line or two, run it in bash instead of
+translating it: `bash <<'EOF' ... EOF`. Non-interactive bash has no
+aliases and none of the traps above. Everything in sections 1-3 still
+applies inside it.
 
 ## Common mistakes
 
