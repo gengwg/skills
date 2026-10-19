@@ -96,6 +96,9 @@ Two consequences:
 
 - **Never "repair" a silence you think failed by creating another one.** List the silences first — you may already have minted one, and you will end up with two overlapping silences on the same target, which is confusing to the next responder and easy to half-lift later.
 - **Re-read the list after every create *and* edit**, and confirm both halves: the silence is `state: active`, **and** the target alert is `status.state: suppressed` carrying that silence's ID in `silencedBy`. A silence that exists is not a silence that matches.
+- **Suppression can lag the create by a few minutes.** Some matched alerts still read unsilenced until the next Alertmanager pass. Re-check after a few minutes before deciding the matcher is wrong.
+
+**Delegated tokens can be narrower than the role.** An OAuth-scoped token, such as an MCP connection acting as a user, may create rule-scoped silences (with `__alert_rule_uid__`) but get "user is not authorized to create a general silence" without one, and 403 on Alertmanager reads, even when the access-control endpoint reports the permission as granted. Node-wide maintenance silences then need a service-account token.
 
 ## Maintenance batches: verify the work started first
 
