@@ -13,7 +13,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: python3 .github/check.py
+      - uses: astral-sh/setup-uv@v10
+      - run: uv run --script .github/check.py
       - run: python3 hooks/test_guard.py
       - run: python3 hooks/test_mcp_classify.py
         env:

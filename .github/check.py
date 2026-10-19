@@ -1,7 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Repo consistency checks: skill frontmatter, README table, plugin versions."""
 import json, re, sys
 from pathlib import Path
+
+import yaml
 
 root = Path(__file__).resolve().parent.parent
 errors = []
@@ -14,7 +19,11 @@ for d in skills:
     if not fm:
         errors.append(f"{d.name}: SKILL.md has no frontmatter")
         continue
-    fields = dict(re.findall(r"^(\w+): *(.*)$", fm.group(1), re.M))
+    try:
+        fields = yaml.safe_load(fm.group(1))
+    except yaml.YAMLError as e:
+        errors.append(f"{d.name}: frontmatter is not valid YAML: {e}")
+        continue
     if fields.get("name") != d.name:
         errors.append(f"{d.name}: frontmatter name is {fields.get('name')!r}")
     if not fields.get("description"):
