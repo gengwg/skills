@@ -35,6 +35,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [gdrive-offload](gdrive-offload/SKILL.md) | Upload files to Google Drive with rclone, verify, then delete local copies | |
 | [slack-feedback-to-issues](slack-feedback-to-issues/SKILL.md) | File deduplicated GitLab issues from a Slack feedback channel, then watch for new reports | |
 | [pto-planner](pto-planner/SKILL.md) | Pick low-impact PTO days from the calendar, then block, file, announce, and remind | |
+| [conference-talks-to-calendar](conference-talks-to-calendar/SKILL.md) | Decide on a conference, pick talks, and calendar them private without clobbering routine blocks or RSVPs | |
 | [video-transcribe-and-caption](video-transcribe-and-caption/SKILL.md) | Transcribe an uncaptioned video with local Whisper, fix misheard lines, burn in captions | |
 | [apt-repo-key-rotation](apt-repo-key-rotation/SKILL.md) | Fix NO_PUBKEY on one APT repo after the vendor rotates its signing key | |
 | [cpu-governor-persist](cpu-governor-persist/SKILL.md) | Set the CPU frequency governor so it survives reboot: systemd unit traps, fail-closed playbook, reboot acceptance | |
