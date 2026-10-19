@@ -26,6 +26,8 @@ __alert_rule_uid__ = <rule UID>
 
 Matching only on `alertname` can fail for Grafana-managed rules (folders can contain same-named rules; notification-time labels may differ from what you expect). The UID matcher is exact. Get the UID from the rule's URL or `/api/v1/provisioning/alert-rules`. (`__alert_rule_uid__` exists only on Grafana-managed rules — for data-source-managed Mimir/Loki rules, match on the rule's own labels.)
 
+**Don't put a regex `__alert_rule_uid__` matcher in the silence-form URL.** With `/alerting/silence/new?matcher=__alert_rule_uid__%3D~a%7Cb`, the form shows no row for it but still saves it, as a plain `=` matcher whose value is the literal string `a|b`. Matchers are ANDed, so the silence matches nothing. It still reads `active`; the only visible tell is "Alert rule unavailable" in the list row. Put ordinary labels in the URL, add the UID row by hand with the `=~` operator, and after saving read back the matchers: same count as you entered, `isRegex: true` on the regex one.
+
 When a silence isn't matching, look at the firing alert's actual notification-time labels rather than guessing:
 
 ```sh
