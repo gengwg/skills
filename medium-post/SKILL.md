@@ -1,6 +1,6 @@
 ---
 name: medium-post
-description: Use when publishing, drafting, or updating a Medium post/article/story from markdown, or when Medium blocks automation (Cloudflare "Attention Required", "you have been blocked", publish limit errors)
+description: Use when publishing, drafting, or updating a Medium post/article/story from markdown, when adding images or screenshots to one, or when Medium blocks automation (Cloudflare "Attention Required", "you have been blocked", publish limit errors)
 ---
 
 # Publishing to Medium
@@ -100,7 +100,26 @@ by `screenshotWidth / window.innerWidth` before clicking.
 
 ## Post-publish edits
 
-Edit URL: `medium.com/p/<id>/edit` (stays on medium.com, permissions OK). The ⋯ menu there has: Manage paywall setting, Change topics, Change display title/subtitle, Manage unlisted setting.
+Edit URL: `medium.com/p/<id>/edit` (stays on medium.com, permissions OK). The ⋯ menu there has: Manage paywall setting, Change topics, Change display title/subtitle, Manage unlisted setting. Body edits (text, images) go live only after **Save and publish**.
+
+## Images
+
+The page holds no `input[type=file]` until you click Medium's add-image button, and that click opens the native file picker, which browser automation can't drive. Intercept it first, so the input lands in the page where `file_upload` can reach it:
+
+1. `javascript_tool`:
+   ```js
+   HTMLInputElement.prototype.click = function () {
+     if (this.type !== 'file') return HTMLElement.prototype.click.call(this);
+     this.id = '__fi'; this.style.display = 'block';
+     if (!this.isConnected) document.body.appendChild(this);
+   };
+   ```
+2. Put the caret at the end of the target paragraph (a collapsed Range in `javascript_tool`), then press `Return` for an empty line.
+3. Click the inline "+" button on that line, then its add-image button.
+4. `find` the input with id `__fi` and `file_upload` the local path to its ref.
+5. After about 3 s, check a new `figure img` follows the target paragraph, then remove `#__fi`. Repeat from step 2 for each image.
+
+Crop or blur screenshots before uploading: names, emails and signatures in them go public with the post.
 
 ## Known limits
 
