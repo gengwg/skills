@@ -17,7 +17,15 @@ Rejoining a node with kubespray is a scoped ansible run plus verification. The f
    ```
    (Control-plane rejoin may need `cluster.yml` with the node in the right groups; `scale.yml` is for adding workers.) Use the repo's pinned environment (venv) — kubespray is version-sensitive to ansible.
 2. **Run from a host that can actually reach the nodes.** If your workstation can't SSH to the cluster's network, run the playbook on a host that can (over SSH with a generous timeout), not through hacks on your side.
-3. **Watch, don't block.** A rejoin runs 10–40+ minutes. Run it as a background task and poll for the `PLAY RECAP` line rather than sitting on a blocking terminal that a dropped SSH connection kills. `tmux`/`nohup` + tailing the log both work.
+3. **Watch, don't block.** A rejoin runs 10–40+ minutes. Run it as a background task and poll for the `PLAY RECAP` line rather than sitting on a blocking terminal that a dropped SSH connection kills. `tmux`/`nohup` + tailing the log both work. A playbook that stops for an interactive confirmation needs a real TTY (tmux), not a flag that skips the prompt.
+
+## Before the run: control node and fact cache
+
+- **`--limit` needs a complete fact cache.** The scoped play reads other hosts' facts (etcd and control-plane addresses) from the cache. Run `playbooks/facts.yml` over the whole inventory first, and check the cache holds one entry per inventory host (kubespray `docs/operations/nodes.md`).
+- **One unreachable host breaks that fact run for everyone.** Comment it out of the inventory for the run rather than let it abort.
+- **Raise the controller's open-file limit.** The common default `ulimit -n 1024` makes `facts.yml` over ~100+ hosts die with `[Errno 24] Too many open files` and cache nothing. Run `ulimit -n $(ulimit -Hn)` in the same shell first.
+- **Keep forks low through a bastion** (`-f 6` to `10`). A high fork count trips the bastion's SSH connection limits and shows up as fake `UNREACHABLE` results.
+- **A newly reinstalled node** has a new host key (remove the stale `known_hosts` entry) and holds the dpkg lock for a while after boot. Wait for `fuser /var/lib/dpkg/lock-frontend` to clear, or `system_packages` fails.
 
 ## Read the recap correctly
 
@@ -25,6 +33,11 @@ Rejoining a node with kubespray is a scoped ansible run plus verification. The f
 
 - `failed=N` — a task ran and failed on the node. Read the last failed task; usually node-local (packages, kubelet, certs).
 - `unreachable=N` — an SSH/network/bastion problem, not kubespray: either ansible never got in, or (if `ok`/`changed` are nonzero) the connection dropped mid-play, leaving a partial apply. Either way: fix reachability and re-run scoped — kubespray plays are idempotent, so re-running over a partial apply is the normal recovery. No amount of playbook debugging helps.
+
+Two `unreachable` causes that are not real network faults:
+
+- **A node mid-reboot.** A few workers that refuse SSH are often rebooting or being recycled. Re-probe them with `-f 1` a minute later before dropping them.
+- **An uncached bastion host key** surfaces as `UNREACHABLE! ... Connection closed by UNKNOWN port 65535`. SSH to the bastion directly once to accept its key, then re-run.
 
 `failed=0 unreachable=0` on every host = the run succeeded — anything else means re-run after fixing, still scoped with `--limit`.
 
@@ -59,3 +72,5 @@ A node that was out of the cluster during a cert rotation can rejoin with **stal
 - Blocking a fragile SSH session on a 30-minute play instead of backgrounding it.
 - Stopping at `failed=0` without checking Ready/taints/cordon — kubespray doesn't uncordon for you.
 - Forgetting etcd membership check on control-plane rejoins.
+- Running `--limit` on a stale or partial fact cache.
+- Dropping a host from the inventory on one `UNREACHABLE` without re-probing it.
