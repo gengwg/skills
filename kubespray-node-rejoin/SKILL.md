@@ -1,6 +1,6 @@
 ---
 name: kubespray-node-rejoin
-description: Use when re-adding or repairing a node (control-plane or worker) in a kubespray-managed cluster with ansible-playbook, when a play returns UNREACHABLE or failed=1, or when a rejoined node needs verification (taints, cordon, etcd membership)
+description: Use when re-adding or repairing a node (control-plane or worker) in a kubespray-managed cluster with ansible-playbook, when a play returns UNREACHABLE or failed=1, when scale.yml fails the fact-cache assert or an rsync from /tmp/kubespray_cache, when a node vanished from kubectl get nodes while its host is up, when kubelet crash-loops on a missing kubelet-client-current.pem, or when a rejoined node needs verification (taints, cordon, etcd membership)
 ---
 
 # Kubespray Node Rejoin
@@ -8,6 +8,37 @@ description: Use when re-adding or repairing a node (control-plane or worker) in
 ## Overview
 
 Rejoining a node with kubespray is a scoped ansible run plus verification. The failure modes are mostly around *where you run it from*, *how you watch it*, and *what you check after* — not the playbook itself.
+
+## First: does it need kubespray at all?
+
+Check the host before planning a rejoin: `uptime -s`, `systemctl is-active kubelet`, `journalctl -u kubelet -n 50`.
+
+| Symptom | Fix |
+|---|---|
+| Node gone from `kubectl get nodes`, host up, kubelet `active`, journal loops on `nodes "<n>" not found` | The Node object was deleted. kubelet registers only at startup: `systemctl restart kubelet`. Labels and taints died with the object; rebuild them from a sibling node of the same class. |
+| kubelet crash-loops on `unable to read client-cert .../kubelet-client-current.pem` and `stat /etc/kubernetes/bootstrap-kubelet.conf: no such file` | Client cert lost. Re-bootstrap it (below). The Node object and its labels survive. |
+| Host reimaged (new hostname or host key, no `/etc/kubernetes`) | Real rejoin: continue with this skill. |
+
+**Re-bootstrap a lost kubelet client cert.** On a control-plane node, `kubeadm token create --ttl 1h`. On the worker, write `/etc/kubernetes/bootstrap-kubelet.conf` (mode 600):
+
+```yaml
+apiVersion: v1
+kind: Config
+clusters:
+- name: default
+  cluster:
+    server: https://<control-plane-ip>:6443   # not 127.0.0.1
+    certificate-authority: /etc/kubernetes/ssl/ca.crt
+users:
+- name: kubelet-bootstrap
+  user: {token: <token>}
+contexts:
+- name: default
+  context: {cluster: default, user: kubelet-bootstrap}
+current-context: default
+```
+
+Then `systemctl restart kubelet`. kubeadm's `node-autoapprove-bootstrap` binding approves the CSR, and the node is Ready in seconds. The server must be a real control-plane IP: kubespray's `127.0.0.1:6443` is the nginx-proxy static pod, which this same kubelet runs, so it can never answer. Delete the token afterwards (`kubeadm token delete <id>`).
 
 ## Run it right
 
@@ -22,7 +53,13 @@ Rejoining a node with kubespray is a scoped ansible run plus verification. The f
 ## Before the run: control node and fact cache
 
 - **`--limit` needs a complete fact cache.** The scoped play reads other hosts' facts (etcd and control-plane addresses) from the cache. Run `playbooks/facts.yml` over the whole inventory first, and check the cache holds one entry per inventory host (kubespray `docs/operations/nodes.md`).
-- **One unreachable host breaks that fact run for everyone.** Comment it out of the inventory for the run rather than let it abort.
+- **Through v2.31, one unreachable host empties the cache.** The bootstrap play is `any_errors_fatal: true`, so it aborts, and `facts.yml` exits 0 with `failed=0` everywhere and zero cache files written. `scale.yml` then fails the fact-cache assert. `-e any_errors_fatal=false` cannot help: it is a reserved play keyword, so ansible warns and discards it. Comment the dead host out of the inventory for the run, or run `facts.yml --limit=<reachable hosts>`. From v2.32 the bootstrap play defaults to not fatal, controlled by `kubespray_any_errors_fatal`. Don't reach for `-e ignore_assert_errors=yes`; it disables every preinstall assert to get past one.
+- **`download_run_once: true` breaks a `--limit` run.** The download play runs on `kube_control_plane[0]`, which `--limit` excludes, so the cache is never filled and the copy fails with `rsync ... /tmp/kubespray_cache/...: No such file or directory (code 23)`. If the node can reach the registries, rerun with `-e '{"download_run_once": false}'`. The plain `-e download_run_once=false` passes the string `"false"`, which `validate_inventory` rejects as not a bool.
+- **`kubelet_rotate_server_certificates: true` needs the approver already running.** `scale.yml` sets the kubelet to request serving certs but doesn't run `kubernetes-apps`, which deploys `kubelet-csr-approver`. Check `kubectl -n kube-system get deploy | grep csr-approver` first. If it is missing, run the `kubernetes-apps` part of `cluster.yml` before scaling, or the node's serving CSRs stay Pending, and `kubectl logs`/`exec` and metrics scrapes of it fail.
+- **Snapshot labels and taints before `kubectl delete node`.** A reimaged node's stale Node object is usually deleted before the rejoin, and its hand-applied labels, taints and cordon go with it. NFD and GPU Operator labels come back on their own; nothing restores the rest:
+  ```sh
+  kubectl get node <n> -o json | jq '{labels: .metadata.labels, taints: .spec.taints, unschedulable: .spec.unschedulable}' > <n>-before.json
+  ```
 - **Raise the controller's open-file limit.** The common default `ulimit -n 1024` makes `facts.yml` over ~100+ hosts die with `[Errno 24] Too many open files` and cache nothing. Run `ulimit -n $(ulimit -Hn)` in the same shell first.
 - **Keep forks low through a bastion** (`-f 6` to `10`). A high fork count trips the bastion's SSH connection limits and shows up as fake `UNREACHABLE` results.
 - **A newly reinstalled node** has a new host key (remove the stale `known_hosts` entry) and holds the dpkg lock for a while after boot. Wait for `fuser /var/lib/dpkg/lock-frontend` to clear, or `system_packages` fails.
@@ -74,3 +111,5 @@ A node that was out of the cluster during a cert rotation can rejoin with **stal
 - Forgetting etcd membership check on control-plane rejoins.
 - Running `--limit` on a stale or partial fact cache.
 - Dropping a host from the inventory on one `UNREACHABLE` without re-probing it.
+- Running a full rejoin when restarting kubelet or a token re-bootstrap would do, and losing the node's labels in the process.
+- Trusting a `facts.yml` exit 0 on v2.31 or older; count the cache files.
