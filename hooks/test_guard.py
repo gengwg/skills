@@ -107,12 +107,12 @@ class RmGuard(unittest.TestCase):
 TRAILER = "Co-Authored-By: Claude <noreply@anthropic.com>"
 
 
-def repo(tmp, remote, message="fix thing"):
-    """A repo on a feature branch with one local commit and one remote."""
+def repo(tmp, remote, message="fix thing", branch="fix-branch"):
+    """A repo on `branch` with one local commit and one remote."""
     run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "commit.gpgsign=false", "-c", "user.name=t",
                                      "-c", "user.email=t@example.com", *a],
                                     check=True, capture_output=True)
-    run("init", "-q", "-b", "fix-branch")
+    run("init", "-q", "-b", branch)
     run("remote", "add", "upstream", remote)
     run("commit", "-q", "--allow-empty", "-m", message)
     return tmp
@@ -165,6 +165,58 @@ class ClaGuard(unittest.TestCase):
     def test_push_of_clean_commit_is_silent(self):
         d = repo(self.tmp, self.K8S, "fix\n\nSigned-off-by: Dev <dev@example.com>")
         self.assertIsNone(decide("git push origin fix-branch", d))
+
+
+class BranchGuard(unittest.TestCase):
+    def setUp(self):
+        self.main = repo(tempfile.mkdtemp(), "https://github.com/gengwg/skills.git", branch="main")
+        self.feat = repo(tempfile.mkdtemp(), "https://github.com/gengwg/skills.git")
+
+    def test_commit_on_protected_branch_denied(self):
+        self.assertEqual(decide('git commit -m "x"', self.main), "deny")
+        self.assertEqual(decide("git push", self.main), "deny")
+
+    def test_commit_after_switching_off_protected_is_silent(self):
+        for sw in ("git switch -c feat", "git checkout -b feat", "git switch --create feat origin/main"):
+            self.assertIsNone(decide(f'{sw} && git add a && git commit -m "x"', self.main), sw)
+        self.assertIsNone(decide("git switch -c feat && git push", self.main))
+
+    def test_commit_after_switching_onto_protected_denied(self):
+        self.assertEqual(decide('git switch main && git commit -m "x"', self.feat), "deny")
+        self.assertEqual(decide("git switch main; git push", self.feat), "deny")
+
+    def test_switch_in_another_repo_does_not_count(self):
+        cmd = f'git -C {self.feat} switch -c other && git commit -m "x"'
+        self.assertEqual(decide(cmd, self.main), "deny")
+
+    def test_unknown_switch_target_falls_back_to_current_branch(self):
+        self.assertEqual(decide('git switch - && git commit -m "x"', self.main), "deny")
+
+    def test_switch_that_may_fail_or_is_undone_falls_back(self):
+        for cmd in ('git switch -c feat; git commit -m x',
+                    'git checkout -b feat || true; git commit -m x',
+                    'git switch -c feat\ngit commit -m x',
+                    'git switch -c x && git checkout develop && git commit -m y',
+                    'git switch -c x && git switch - && git commit -m y'):
+            self.assertEqual(decide(cmd, self.main), "deny", cmd)
+
+    def test_switch_text_inside_a_statement_does_not_count(self):
+        for cmd in ('git commit -m "docs: use git switch -c foo"',
+                    'echo git switch -c x && git commit -m y'):
+            self.assertEqual(decide(cmd, self.main), "deny", cmd)
+
+    def test_commit_over_ssh_is_not_judged_by_local_branch(self):
+        cmd = "ssh host 'cd ~/wt/feat && git add a && git commit -m \"x\"'"
+        self.assertIsNone(decide(cmd, self.main))
+        self.assertIsNone(decide('SSH_AUTH_SOCK=/s ssh -A host "cd wt; git commit -m x"', self.main))
+
+    def test_ssh_remote_still_checks_text_rules(self):
+        self.assertEqual(decide("ssh host 'cd wt && git push --force'", self.feat), "deny")
+        self.assertEqual(decide("ssh host 'cd wt && git push origin main'", self.feat), "deny")
+
+    def test_local_commit_after_ssh_is_judged(self):
+        self.assertEqual(decide('ssh host "uptime" && git commit -m "x"', self.main), "deny")
+        self.assertEqual(decide("git commit -m \"ssh host 'x'\"", self.main), "deny")
 
 
 if __name__ == "__main__":

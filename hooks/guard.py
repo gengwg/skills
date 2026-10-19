@@ -13,6 +13,8 @@ KUBE_WRITE = {"apply", "create", "delete", "patch", "edit", "replace", "scale", 
 SAFE_RM_PREFIXES = ("/tmp/claude",)
 SEG = r"[^\n;|&]*"  # stay within one shell statement
 GIT = r"\bgit\b(?:\s+-[Cc]\s+\S+|\s+--\S+)*\s+"  # git + global opts, then the subcommand
+CMD_START = r"\s*\(?\s*(?:\w+=\S*\s+)*"
+SWITCH = GIT + r"(?:switch\s+(?:(?:-[cC]|--create|--force-create)\s+)?|checkout\s+-[bB]\s+)(?!-)([\w./-]+)"
 # EasyCLA fails any co-author it cannot match to a GitHub account with a signed CLA.
 CLA_REMOTE = re.compile(r"github\.com[:/]kubernetes(?:-[\w-]+)?/", re.I)
 TRAILER = re.compile(r"^\s*co-authored-by:", re.I | re.M)
@@ -48,9 +50,29 @@ def resolve(p, base, env=None):
 
 
 def statements(cmd, cwd):
-    """(statement, repo dir) pairs. `cd` carries forward; `git -C` applies to its own statement only."""
-    env = {}
-    for stmt in re.split(r"\n|&&|\|\||;", cmd):
+    """(statement, repo dir, branch) triples. `cd` carries forward; `git -C` applies to its own
+    statement only. branch is set when the command itself decides it: a `git switch` earlier in
+    the same repo and `&&`-chained to this statement, or "" inside an ssh remote command, whose
+    branch lives on another host. None means ask git."""
+    env, branches, quote = {}, {}, None
+    parts = re.split(r"(\n|&&|\|\||;)", cmd)
+    for stmt, sep in zip(parts[0::2], ["&&"] + parts[1::2]):
+        # Past `;`, `||` or a newline an earlier switch may have failed and this still runs.
+        # A switch onto a protected branch is kept: failing closed there is the point.
+        if sep != "&&":
+            branches = {k: v for k, v in branches.items() if v in PROTECTED}
+        # The split cuts `ssh host 'cd x && git commit'` apart; track the open quote.
+        if quote:
+            if stmt.count(quote) % 2:
+                quote = None
+            yield stmt, cwd, ""
+            continue
+        m = re.match(r"\s*(?:\w+=\S*\s+)*ssh\b[^'\"]*(['\"])", stmt)
+        if m:
+            if stmt[m.start(1):].count(m.group(1)) % 2:
+                quote = m.group(1)
+            yield stmt, cwd, ""
+            continue
         # Plain VAR=value assignments only, so a path built from them resolves. An
         # env-prefixed command (SSH_AUTH_SOCK=... git push) lands here too; harmless.
         for k, v in re.findall(r"(?:^|\s)(\w+)=(\S*)", stmt):
@@ -59,7 +81,13 @@ def statements(cmd, cwd):
         if m:
             cwd = resolve(m.group(1), cwd, env)
         gc = re.search(r"\bgit\s+-[Cc]\s+(\S+)", stmt)
-        yield stmt, (resolve(gc.group(1), cwd, env) if gc else cwd)
+        d = resolve(gc.group(1), cwd, env) if gc else cwd
+        yield stmt, d, branches.get(d)
+        sw = re.match(CMD_START + SWITCH, stmt)
+        if sw:
+            branches[d] = sw.group(1)
+        elif re.match(CMD_START + GIT + r"(?:switch|checkout)\b", stmt):
+            branches.pop(d, None)  # `switch -`, `checkout <branch>`: ask git again
 
 
 def submodules(d):
@@ -107,7 +135,7 @@ def kubectl_guard(cmd):
         out("deny", f"kubectl write without explicit --context: `{stmt.strip()[:120]}`. Add --context=<cluster>; never rely on the current context.")
 
 
-def git_guard(stmt, d):
+def git_guard(stmt, d, br=None):
     commit = re.search(GIT + r"commit\b" + SEG, stmt)
     push = re.search(GIT + r"push\b" + SEG, stmt)
     add = re.search(GIT + r"add\b" + SEG, stmt)
@@ -120,11 +148,14 @@ def git_guard(stmt, d):
         raw = push.group(0).split()[push.group(0).split().index("push") + 1:]
         toks = [t for i, t in enumerate(raw) if not t.startswith("-") and (i == 0 or raw[i - 1] not in ("-o", "--push-option", "--receive-pack", "--repo"))]
         refspec = toks[1] if len(toks) > 1 else ""
-        target = refspec.rsplit(":", 1)[-1].removeprefix("refs/heads/") if refspec else git(d, "branch", "--show-current")
+        if br is None:
+            br = git(d, "branch", "--show-current")
+        target = refspec.strip("\"'").rsplit(":", 1)[-1].removeprefix("refs/heads/") if refspec else br
         if target in PROTECTED:
             out("deny", f"Refusing to push to protected branch '{target}'. Push a feature branch and open an MR/PR.")
     if commit:
-        br = git(d, "branch", "--show-current")
+        if br is None:
+            br = git(d, "branch", "--show-current")
         if br in PROTECTED:
             out("deny", f"On '{br}' in {d}. Create a feature branch (or worktree) before committing.")
         subs = submodules(d)
@@ -239,9 +270,9 @@ def bash(cmd, cwd):
     local("command", cmd, raw)
     if "kubectl" in cmd:
         kubectl_guard(cmd)
-    for stmt, d in statements(cmd, cwd):
+    for stmt, d, br in statements(cmd, cwd):
         local("statement", stmt, d)
-        git_guard(stmt, d)
+        git_guard(stmt, d, br)
         cla_guard(stmt, d, raw)
         rm_guard(stmt, d)
 
