@@ -1,6 +1,6 @@
 ---
 name: agent-shell-pitfalls
-description: Use when a shell script run through an AI agent's Bash tool or a CI job must stop on a failing check before a commit, push, or deploy; when capturing an exit code through a pipe or tee; when a gate is a python heredoc; when stopping a background process by name with pkill -f or pgrep -f; or when the agent's shell is zsh and bash-style commands fail with "no matches found", "read-only variable: status", "parse error near ()", "= not found", or a pathspec holding several space-separated names.
+description: Use when a shell script run through an AI agent's Bash tool or a CI job must stop on a failing check before a commit, push, or deploy; when capturing an exit code through a pipe or tee; when a gate is a python heredoc; when stopping a background process by name with pkill -f or pgrep -f; or when the agent's shell is zsh and bash-style commands fail with no matches found, read-only variable status, parse error near (), = not found, or a pathspec holding several space-separated names.
 ---
 
 # Agent shell pitfalls
