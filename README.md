@@ -18,6 +18,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [grafana-alert-silences](grafana-alert-silences/SKILL.md) | Time-boxed alert silences that match correctly and don't blind aggregates | oncall-sre |
 | [grafana-alert-noise-reduction](grafana-alert-noise-reduction/SKILL.md) | Cut alert spam by mechanism: grouping, query guards, quorum — without blinding the rule | oncall-sre |
 | [grafana-oncall-shift-override](grafana-oncall-shift-override/SKILL.md) | Take over a shift or fix a rotation in Grafana OnCall without corrupting the schedule | oncall-sre |
+| [oncall-shift-briefing](oncall-shift-briefing/SKILL.md) | Start-of-shift briefing: handoff, new alerts, incidents, what to look at first; Grafana IRM empty-schedule trap | oncall-sre |
 | [verify-alert-before-replying](verify-alert-before-replying/SKILL.md) | Re-derive an alert's claim from live data before answering "is this real?" | oncall-sre |
 | [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) | oncall-sre |
 | [dell-dcgmprofrunner-gpu-operator](dell-dcgmprofrunner-gpu-operator/SKILL.md) | Run Dell's dcgmprofrunner thermal test in the GPU Operator DCGM pod, no reinstall, and read the result | oncall-sre |
