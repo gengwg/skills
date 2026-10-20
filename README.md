@@ -43,6 +43,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [cpu-governor-persist](cpu-governor-persist/SKILL.md) | Set the CPU frequency governor so it survives reboot: systemd unit traps, fail-closed playbook, reboot acceptance | |
 | [glab-api-pitfalls](glab-api-pitfalls/SKILL.md) | glab writes that exit 0 and do the wrong thing: literal @file, wiped description, wrong-repo target, cross-project refs | |
 | [agent-shell-pitfalls](agent-shell-pitfalls/SKILL.md) | Shell gates that gate nothing: `set -e` inside `&&`/`if`, exit codes lost in piped groups, `pkill -f` matching its own shell | |
+| [pr-review-rubric](pr-review-rubric/SKILL.md) | Four-part PR review: justification, P0-P4 findings, goal completeness, AI-generated code check | |
 
 ## Claude Code plugin
 
