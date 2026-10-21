@@ -53,6 +53,23 @@ jq -r -f gitlab-approvals.jq mrs.json > approvals.csv
 
 The list endpoint filters on update time, and merging an MR updates it, so `updated_after` misses nothing. The `merged_at` filter does the real cut. `UNKNOWN_HEAD` means no version matched the merged sha; check that MR by hand.
 
+### GitLab direct pushes
+
+These are commits on `main` that no MR merged. With merge commits, every MR leaves a "See merge request" line on its first-parent commit, so only the rest need a lookup. On fast-forward projects there is no such line, so drop the `--grep` and look up every commit.
+
+```bash
+git log origin/main --first-parent --since=2026-01-01T00:00:00Z --until=2026-07-01T00:00:00Z \
+  --grep='See merge request' --invert-grep --format=%H > candidates.txt
+while read c; do
+  r=$(glab api "projects/$P/repository/commits/$c/merge_requests") || r=""
+  v=$(printf '%s' "$r" | jq -r 'if type == "array" then (if any(.[]; .state == "merged") then "MR" else "DIRECT" end) else "ERR" end')
+  echo "$c ${v:-ERR}"
+done < candidates.txt > direct-pushes.txt
+grep -c ' ERR$' direct-pushes.txt     # must be 0: rerun those commits
+```
+
+Use `printf`, not `echo`. zsh's `echo` expands the `\n` inside MR descriptions, jq rejects the result, and every lookup looks like a failure. Never count `ERR` as either `DIRECT` or clean.
+
 ## Before trusting the CSV
 
 The row count must equal the list count. In testing, a TLS handshake timeout dropped changes with exit 0 on both GitHub and GitLab, and the CSV looked complete.
