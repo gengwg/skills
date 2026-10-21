@@ -72,7 +72,15 @@ Use `printf`, not `echo`. zsh's `echo` expands the `\n` inside MR descriptions, 
 
 ## Before trusting the CSV
 
-The row count must equal the list count. In testing, a TLS handshake timeout dropped changes with exit 0 on both GitHub and GitLab, and the CSV looked complete.
+The row count must equal the list count. In testing, a TLS handshake timeout dropped changes with exit 0 on both GitHub and GitLab, and the CSV looked complete. On a 193-MR run, 12 MRs were lost this way.
+
+To fill the gaps, list the missing IDs, rerun the fetch loop with `missing.txt` in place of `mrs.txt` writing `missing.json`, then merge. On GitHub, use `.number` instead of `.iid`.
+
+```bash
+comm -23 <(sort mrs.txt) <(jq -r '.[].iid' mrs.json | sort) > missing.txt
+# rerun the fetch loop over missing.txt > missing.json
+jq -s 'add | unique_by(.iid)' mrs.json missing.json > merged.json && mv -f merged.json mrs.json
+```
 
 ## Reading exceptions
 
