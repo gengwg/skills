@@ -1,6 +1,6 @@
 ---
 name: oncall-shift-briefing
-description: Use when starting an on-call shift or taking over from the previous on-call ("start oncall", "get me up to speed", "what changed since the handoff") or asked to watch and acknowledge new pages during the shift, especially with Grafana IRM / OnCall, where the schedule API can report nobody on call while the rotation is live
+description: Use when starting an on-call shift or taking over from the previous on-call ("start oncall", "get me up to speed", "what changed since the handoff") asked to watch and acknowledge new pages during the shift, or wrapping up a shift, especially with Grafana IRM / OnCall, where the schedule API can report nobody on call while the rotation is live
 ---
 
 # On-call Shift Briefing
@@ -55,6 +55,10 @@ When asked to watch alerts during the shift, repeat this every 15 minutes (Claud
 2. Keep those routed to the paging channel. Info-only channels are not paged; leave them.
 3. Acknowledge each one and confirm the returned state.
 4. Report every ack: alert number, title, cluster or service, fire time. An ack stops escalation to the next person on the schedule, so nothing acked may go unreported. Say "no new alerts" when there are none.
+
+## End of shift
+
+After the handover, suggest skill updates from what the shift taught. Walk the shift and list what a skill got wrong or missed: a step that failed, a workaround that had to be found, a provider or channel convention learned, a false page traced to a rule. For each, name the skill and the one-line change. Propose them; edit a skill only when the user picks it.
 
 ## Common mistakes
 
