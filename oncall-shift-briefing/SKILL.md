@@ -63,3 +63,4 @@ When asked to watch alerts during the shift, repeat this every 15 minutes (Claud
 | "Nobody is on call, pages may not reach you" from empty schedule results | Resolve your own shift first; an empty result is not a gap |
 | Repeating the handoff note's wording | Compare it with current alert state: a "flap" firing continuously for hours is an outage |
 | Re-querying narrower windows after an alert-group result hits the MCP token cap | Parse the dumped result file instead |
+| Reporting Slack as unavailable because no `slack_*` tools appear | The Slack server may sit under a plugin that needs a one-time OAuth; search for its tools and run its `authenticate` before giving up |
