@@ -20,6 +20,7 @@ npx skills add gengwg/skills -s medium-post -g
 | [grafana-oncall-shift-override](grafana-oncall-shift-override/SKILL.md) | Take over a shift or fix a rotation in Grafana OnCall without corrupting the schedule | oncall-sre |
 | [oncall-shift-briefing](oncall-shift-briefing/SKILL.md) | Start-of-shift briefing: handoff, new alerts, incidents, what to look at first; Grafana IRM empty-schedule trap | oncall-sre |
 | [verify-alert-before-replying](verify-alert-before-replying/SKILL.md) | Re-derive an alert's claim from live data before answering "is this real?" | oncall-sre |
+| [ip-abuse-report-triage](ip-abuse-report-triage/SKILL.md) | Decide whether an abuse report against your public IP is real or forged-source reflection, before rotating or reimaging | oncall-sre |
 | [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) | oncall-sre |
 | [dell-dcgmprofrunner-gpu-operator](dell-dcgmprofrunner-gpu-operator/SKILL.md) | Run Dell's dcgmprofrunner thermal test in the GPU Operator DCGM pod, no reinstall, and read the result | oncall-sre |
 | [kubespray-node-rejoin](kubespray-node-rejoin/SKILL.md) | Rejoin a node to a kubespray cluster: scoped runs, recap reading, post-verification | oncall-sre |
