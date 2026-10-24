@@ -15,11 +15,33 @@ IRRECOVERABLE = {"send", "post", "reply", "forward", "share", "publish", "schedu
 WRITE = {"create", "update", "write", "add", "set", "install", "mutate", "patch"}
 READ = {"get", "list", "search", "query", "read", "fetch", "describe", "explain",
         "inspect", "find", "analyze"}
+# (service, tool) pairs whose verb misleads, applied before the verb rules. The
+# service matches as a substring of the server so prefix renames still match.
+OVERRIDES = {
+    ("chrome", "navigate"): "inside", ("chrome", "tabs_context_mcp"): "inside",
+    ("chrome", "tabs_create_mcp"): "inside", ("chrome", "tabs_close_mcp"): "inside",
+    ("grafana", "ask_assistant"): "inside", ("calendar", "suggest_time"): "inside",
+    ("", "authenticate"): "inside",
+    # A click or form fill can submit anything.
+    ("chrome", "computer"): "multiplexer", ("chrome", "form_input"): "multiplexer",
+    # The design's starting set: each has a known undo.
+    ("grafana", "alerting_silences_write"): "compensatable",
+    ("calendar", "create_event"): "compensatable",
+    ("notion", "notion-create-pages"): "compensatable",
+    ("notion", "notion-delete-pages"): "compensatable",
+    ("gmail", "trash_message"): "compensatable", ("gmail", "trash_thread"): "compensatable",
+    ("neon", "delete_project"): "compensatable",
+}
 
 
-def classify(name):
-    """Class for an mcp__<server>__<tool> name, and the token that decided it."""
-    tool = name.split("__", 2)[-1].lower()
+def classify(name, inp=None):
+    """Class for an mcp__<server>__<tool> call, and the token that decided it."""
+    _, server, tool = name.lower().split("__", 2)
+    for (service, t), cls in OVERRIDES.items():
+        if t == tool and service in server:
+            return cls, "override"
+    if tool == "grafana_api_request" and (inp or {}).get("method", "GET").upper() == "GET":
+        return "inside", "GET"
     if tool in MULTIPLEXERS:
         return "multiplexer", tool
     words = re.split(r"[_\-]", tool)
@@ -38,7 +60,7 @@ def main():
         name = h.get("tool_name", "")
         if not name.startswith("mcp__"):
             return
-        cls, why = classify(name)
+        cls, why = classify(name, h.get("tool_input"))
         line = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "session": h.get("session_id", ""), "tool": name, "class": cls, "why": why}
         os.makedirs(os.path.dirname(LOG), exist_ok=True)

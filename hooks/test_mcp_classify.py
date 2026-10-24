@@ -26,14 +26,13 @@ class Classify(unittest.TestCase):
             ("mcp__plugin_operations_slack__slack_schedule_message", "irrecoverable"),
             ("mcp__claude_ai_Gmail__forward", "irrecoverable"),
             ("mcp__claude_ai_Google_Drive__share_file", "irrecoverable"),
-            ("mcp__Neon__delete_project", "irrecoverable"),
+            ("mcp__Neon__delete_branch", "irrecoverable"),
         ])
 
     def test_writes_are_irrecoverable(self):
         self.check([
-            ("mcp__claude_ai_grafana-cloud__alerting_silences_write", "irrecoverable"),
             ("mcp__claude_ai_grafana-cloud__update_dashboard", "irrecoverable"),
-            ("mcp__claude_ai_Notion__notion-create-pages", "irrecoverable"),
+            ("mcp__claude_ai_Notion__notion-update-page", "irrecoverable"),
         ])
 
     def test_reads_are_inside(self):
@@ -44,16 +43,40 @@ class Classify(unittest.TestCase):
             ("mcp__claude_ai_Notion__notion-search", "inside"),
         ])
 
+    def test_overrides_beat_verbs(self):
+        self.check([
+            ("mcp__claude-in-chrome__navigate", "inside"),
+            ("mcp__claude-in-chrome__tabs_create_mcp", "inside"),
+            ("mcp__claude-in-chrome__computer", "multiplexer"),
+            ("mcp__claude_ai_grafana-cloud__alerting_silences_write", "compensatable"),
+            ("mcp__claude_ai_Notion__notion-create-pages", "compensatable"),
+            ("mcp__Neon__delete_project", "compensatable"),
+            ("mcp__plugin_small-business_google-calendar__create_event", "compensatable"),
+        ])
+
+    def test_overrides_are_tied_to_their_service(self):
+        self.check([
+            ("mcp__other__delete_project", "irrecoverable"),
+            ("mcp__other__create_event", "irrecoverable"),
+            ("mcp__other__trash_message", "irrecoverable"),
+            ("mcp__other__navigate", "unknown"),
+        ])
+
+    def test_grafana_api_request_by_method(self):
+        name = "mcp__claude_ai_grafana-cloud__grafana_api_request"
+        self.assertEqual(classify(name, {"endpoint": "/api/org"})[0], "inside")
+        self.assertEqual(classify(name, {"endpoint": "/api/org", "method": "GET"})[0], "inside")
+        self.assertEqual(classify(name, {"endpoint": "/api/org", "method": "POST"})[0], "multiplexer")
+        self.assertEqual(classify(name, {"endpoint": "/api/org", "method": "delete"})[0], "multiplexer")
+
     def test_write_verb_beats_read_verb(self):
         self.check([("mcp__x__list_and_delete_things", "irrecoverable")])
 
     def test_multiplexers_and_unknown_verbs(self):
         self.check([
-            ("mcp__claude_ai_grafana-cloud__grafana_api_request", "multiplexer"),
             ("mcp__claude_ai_WorkOS__mutate", "multiplexer"),
             ("mcp__claude_ai_Claude_Docs__batch", "multiplexer"),
             ("mcp__Neon__run_sql", "unknown"),
-            ("mcp__claude-in-chrome__navigate", "unknown"),
         ])
 
 
