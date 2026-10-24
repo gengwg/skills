@@ -1,6 +1,6 @@
 ---
 name: agent-shell-pitfalls
-description: Use when a shell script run through an AI agent's Bash tool or a CI job must stop on a failing check before a commit, push, or deploy; when capturing an exit code through a pipe or tee; when a gate is a python heredoc; when stopping a background process by name with pkill -f or pgrep -f; or when the agent's shell is zsh and bash-style commands fail with no matches found, read-only variable status, parse error near (), = not found, or a pathspec holding several space-separated names.
+description: Use when a shell script run through an AI agent's Bash tool or a CI job must stop on a failing check before a commit, push, or deploy; when capturing an exit code through a pipe or tee; when a gate is a python heredoc; when stopping a background process by name with pkill -f or pgrep -f; or when the agent's shell is zsh and bash-style commands fail with no matches found, read-only variable status, parse error near (), = not found, or a pathspec holding several space-separated names; or a CLI run in the background hangs with empty output until a timeout.
 ---
 
 # Agent shell pitfalls
@@ -100,11 +100,31 @@ bash fails like this:
 | `status=$?` | `read-only variable: status` aborts the call | Use another name: `rc=$?` |
 | `g() { ...; }` | `parse error near ()` when an alias `g` exists; `unalias g` in the same call doesn't help, since aliases expand at parse time | `function g { ...; }`, or a longer name |
 | `rm file` | Aliased to `rm -i`, prompts with no terminal | `command rm -f file` |
+| `GID=$(...)` | `failed to change group ID`: `GID` is a readonly special variable | Use another name: `ISSUE_GID` |
+| `cmd --from-file=<(read -rs "K?key: "; echo "$K")` | Hangs: zsh runs the process substitution in the background, so `read` never gets the keyboard | Read first, then pipe a builtin: `read -rs "K?key: "; printf '%s\n' "$K" \| cmd --from-file=/dev/stdin; unset K` |
 
 For anything longer than a line or two, run it in bash instead of
 translating it: `bash <<'EOF' ... EOF`. Non-interactive bash has no
 aliases and none of the traps above. Everything in sections 1-3 still
 applies inside it.
+
+## 5. A CLI that reads stdin waits forever in a background shell
+
+Some CLIs read stdin whenever it is not a terminal, to take extra input
+from a pipe. Started from a background job or an agent's tool call,
+stdin is an open pipe that never closes, so the command sits there with
+no output until a timeout kills it. `opencode run` behaves this way: three
+review runs hit a 600 s timeout with empty output, and the same runs
+finished in seconds once stdin was closed.
+
+```sh
+timeout -k 20 600 some-cli run ... < /dev/null > out.txt 2>&1
+```
+
+In code, pass `stdin=subprocess.DEVNULL` to `subprocess.run` or `Popen`.
+An exit of 124 with an empty output file is this hang, not a slow tool.
+`ssh` inside a `while read` loop has the opposite problem, eating the
+loop's input; give it `-n`.
 
 ## Common mistakes
 
@@ -112,3 +132,4 @@ applies inside it.
 - Calling a gate verified because its check printed a failure. Check the lines after it did not run.
 - Verifying an exit-code fix with a fixture instead of a real non-zero run.
 - Trusting the `[x]yz` bracket trick to make `pkill -f` safe.
+- Re-running a CLI that timed out with empty output, without closing its stdin.

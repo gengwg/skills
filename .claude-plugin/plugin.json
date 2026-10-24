@@ -1,7 +1,7 @@
 {
   "name": "oncall-sre",
   "description": "On-call SRE skills (Grafana alerting/OnCall, GPU nodes, kubespray) plus kubectl/git guardrail hooks.",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "author": { "name": "Weigang Geng", "url": "https://github.com/gengwg" },
   "repository": "https://github.com/gengwg/skills",
   "license": "MIT",
@@ -17,6 +17,8 @@
     "./nvidia-bug-report-gpu-operator",
     "./dell-dcgmprofrunner-gpu-operator",
     "./kubespray-node-rejoin",
+    "./k8s-tailscale-subnet-router",
+    "./ubuntu-auto-upgrades-off",
     "./tofu-gitlab-state-local-apply",
     "./dcgm-telemetry-pitfalls",
     "./gpu-operator-driver-uncordon",

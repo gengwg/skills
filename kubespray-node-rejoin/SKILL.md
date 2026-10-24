@@ -74,7 +74,7 @@ Then `systemctl restart kubelet`. kubeadm's `node-autoapprove-bootstrap` binding
 Two `unreachable` causes that are not real network faults:
 
 - **A node mid-reboot.** A few workers that refuse SSH are often rebooting or being recycled. Re-probe them with `-f 1` a minute later before dropping them.
-- **An uncached bastion host key** surfaces as `UNREACHABLE! ... Connection closed by UNKNOWN port 65535`. SSH to the bastion directly once to accept its key, then re-run.
+- **An uncached bastion host key** surfaces as `UNREACHABLE! ... Connection closed by UNKNOWN port 65535` on every host, even at low forks. `-o StrictHostKeyChecking=accept-new` in `ansible_ssh_common_args` does not help: options on the command line apply to the final hop, not the `-J` jump. Confirm with `ssh -o BatchMode=yes -o StrictHostKeyChecking=yes <user>@<bastion> true` ("Host key verification failed"), check the `ssh-keyscan` fingerprints against a machine that already trusts the bastion, add them, then re-run. A key stored under the bastion's DNS name doesn't cover its IP.
 
 `failed=0 unreachable=0` on every host = the run succeeded — anything else means re-run after fixing, still scoped with `--limit`.
 
