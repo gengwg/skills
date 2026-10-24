@@ -42,3 +42,4 @@ Include the query or command used, so the reader can re-check.
 - Posting the reply directly instead of drafting for the human.
 - Reporting a clean fleet sweep without running the same probe on a host with a known fault. A timeout or truncated output reads as all-clear.
 - Calling a node finding new after an empty issue-tracker search. Search the chat and vendor channels where node work actually happens first.
+- Crediting a fix (a vendor's airflow change, a config change) because the symptom dropped. Check that load didn't drop in the same window: a GPU node that stopped thermal-throttling after a cooling fix may just be idle.

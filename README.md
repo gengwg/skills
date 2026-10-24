@@ -24,6 +24,8 @@ npx skills add gengwg/skills -s medium-post -g
 | [nvidia-bug-report-gpu-operator](nvidia-bug-report-gpu-operator/SKILL.md) | Generate nvidia-bug-report / run nvidia-smi on GPU Operator nodes (nothing on host PATH) | oncall-sre |
 | [dell-dcgmprofrunner-gpu-operator](dell-dcgmprofrunner-gpu-operator/SKILL.md) | Run Dell's dcgmprofrunner thermal test in the GPU Operator DCGM pod, no reinstall, and read the result | oncall-sre |
 | [kubespray-node-rejoin](kubespray-node-rejoin/SKILL.md) | Rejoin a node to a kubespray cluster: scoped runs, recap reading, post-verification | oncall-sre |
+| [k8s-tailscale-subnet-router](k8s-tailscale-subnet-router/SKILL.md) | Reach a cluster's node network over a Tailscale subnet router pod when the bastion is gone; non-root manifest, key handling, route and policy traps | oncall-sre |
+| [ubuntu-auto-upgrades-off](ubuntu-auto-upgrades-off/SKILL.md) | Make unattended upgrades actually stop on GPU hosts: what to mask, a per-host check, a DaemonSet fallback, and the wedged apt and half-configured kernel they leave behind | oncall-sre |
 | [tofu-gitlab-state-local-apply](tofu-gitlab-state-local-apply/SKILL.md) | Local tofu plan/apply against GitLab-managed state without hitting the wrong state or a fake apply | oncall-sre |
 | [dcgm-telemetry-pitfalls](dcgm-telemetry-pitfalls/SKILL.md) | DCGM series that read as fault or health and are neither: event-created XID, latched field 170, exporter-dropped NVLink, aggregated PROF, DCGM 3 vs 4 names | oncall-sre |
 | [gpu-operator-driver-uncordon](gpu-operator-driver-uncordon/SKILL.md) | GPU Operator driver pod uncordons a node cordoned for a bad GPU after every reboot: proof, workarounds, fleet sweep | oncall-sre |
