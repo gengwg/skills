@@ -99,7 +99,8 @@ bash fails like this:
 | `ls *.bak 2>/dev/null` with no match | `no matches found`; the command never runs and `2>/dev/null` doesn't silence it | `find . -maxdepth 1 -name '*.bak'` |
 | `status=$?` | `read-only variable: status` aborts the call | Use another name: `rc=$?` |
 | `g() { ...; }` | `parse error near ()` when an alias `g` exists; `unalias g` in the same call doesn't help, since aliases expand at parse time | `function g { ...; }`, or a longer name |
-| `rm file` | Aliased to `rm -i`, prompts with no terminal | `command rm -f file` |
+| `rm file` / `mv a b` | Aliased to `rm -i` / `mv -i`; prompts with no terminal, so the call hangs or the move silently doesn't happen | `command rm -f file`, `command mv -f a b` |
+| `curl https://host/api?page=2` (or `glab api .../jobs?per_page=50`) | `?` is a glob: `no matches found`, the request never runs, and a polling loop around it spins forever | Quote the URL |
 | `GID=$(...)` | `failed to change group ID`: `GID` is a readonly special variable | Use another name: `ISSUE_GID` |
 | `cmd --from-file=<(read -rs "K?key: "; echo "$K")` | Hangs: zsh runs the process substitution in the background, so `read` never gets the keyboard | Read first, then pipe a builtin: `read -rs "K?key: "; printf '%s\n' "$K" \| cmd --from-file=/dev/stdin; unset K` |
 
