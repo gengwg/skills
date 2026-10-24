@@ -111,7 +111,10 @@ summaries, never message bodies or credentials.
    appends the class each call would get to `~/.claude/mcp-classify.jsonl`
    (tool name and class only, never the input). It has the verb rules and
    multiplexer list, but no override table or allowlist yet. Review the ask and
-   unknown counts.
+   unknown counts. The first week (2,017 calls) would have asked on 16%,
+   mostly Chrome and a bulk Calendar edit. On 2026-10-24 a generic override
+   table and a GET check for `grafana_api_request` went into the logger. Log a
+   second week.
 3. **Enforce** irrecoverable and unknown as ask.
 4. **Turn on the ledger** for compensatable calls, and print it at session end.
 5. **Refactor:** fold the Slack rule into the override table and delete the
