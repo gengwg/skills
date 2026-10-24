@@ -1,6 +1,6 @@
 ---
 name: dcgm-telemetry-pitfalls
-description: Use when reading DCGM / dcgm-exporter GPU metrics in Prometheus or Grafana to decide whether a GPU node is healthy or faulted, especially when a series is missing (DCGM_FI_DEV_XID_ERRORS, DCGM_FI_DEV_NVLINK_*), when DCGM_FI_DEV_FABRIC_MANAGER_STATUS reads healthy, when DCGM_FI_PROF_* comes back with no labels, or when an alert rule keyed on a DCGM field name is blind on some clusters.
+description: Use when reading DCGM / dcgm-exporter GPU metrics in Prometheus or Grafana to decide whether a GPU node is healthy or faulted, especially when a series is missing (DCGM_FI_DEV_XID_ERRORS, DCGM_FI_DEV_NVLINK_*), when DCGM_FI_DEV_FABRIC_MANAGER_STATUS reads healthy, when DCGM_FI_PROF_* comes back with no labels, when an alert rule keyed on a DCGM field name is blind on some clusters, or when a per-node DCGM panel or join collapses to 8 series or shows every GPU as missing on some clusters.
 ---
 
 # Skill: dcgm-telemetry-pitfalls
@@ -116,6 +116,40 @@ and count both names per cluster.
 Write rules as `metric_a or metric_b` and verify with
 `count by (cluster) (metric)` for both names.
 
+## 7. The host label is `Hostname` on some exporters, `hostname` on others
+
+Older dcgm-exporter builds label the node `Hostname`; newer ones (DCGM 4 era)
+use lowercase `hostname`, and no series carries both. A query that groups or
+joins on `Hostname` silently breaks on the lowercase clusters:
+`max by (cluster, Hostname, gpu)` collapses every GPU into one series per GPU
+index (8 per cluster), so "GPUs reporting" reads 8 and "GPUs missing" reads
+the whole fleet, while nothing is actually missing. Node dropdowns built from
+`label_values(..., Hostname)` come up empty.
+
+Copy the label before using it; the regex only fires where `hostname` is set,
+so `Hostname`-labelled clusters are unchanged:
+
+```promql
+max by (cluster, Hostname, gpu) (
+  label_replace(DCGM_FI_DEV_GPU_TEMP, "Hostname", "$1", "hostname", "(.+)"))
+```
+
+A selector that filters on the node needs both spellings, since
+`label_replace` runs after the matcher:
+
+```promql
+(DCGM_FI_DEV_GPU_UTIL{Hostname=~"$node", Hostname!=""}
+ or label_replace(DCGM_FI_DEV_GPU_UTIL{hostname=~"$node", hostname!=""},
+                  "Hostname", "$1", "hostname", "(.+)"))
+```
+
+For a Grafana node variable, use
+`query_result(count by (Hostname) (label_replace(<selector>, "Hostname", "$1", "hostname", "(.+)")))`
+with regex `/Hostname="([^"]+)"/`. Check with
+`count by (cluster) (DCGM_FI_DEV_GPU_TEMP{Hostname=""})`: any cluster listed
+is on the lowercase label. Verify a fix on one cluster of each kind; the
+`Hostname` one must return exactly what it did before.
+
 ## Common mistakes
 
 - Reporting "no Xid" or "no NVLink data" without the shape check in 1 or the
@@ -127,3 +161,5 @@ Write rules as `metric_a or metric_b` and verify with
 - Giving up on `DCGM_FI_PROF_*` because `avg()` returns nothing.
 - Declaring a cluster blind without reading the rule; thermal and power rules
   often already `or` both field names.
+- Trusting a per-node DCGM panel that reads exactly 8 GPUs per cluster; it is
+  the `Hostname`/`hostname` split in 7, not lost telemetry.
